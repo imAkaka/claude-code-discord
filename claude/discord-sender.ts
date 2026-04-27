@@ -27,6 +27,7 @@ export const hiddenMessageTypes = new Set<string>([
   'tool_result',      // ✅ Tool Result
   'tool_progress',    // ⏳ running...
   'tool_summary',     // 📋 Tool Summary
+  'other',            // Unrecognized content blocks (e.g., agent prompts)
 ]);
 
 // Helper function to create action buttons for completed sessions
