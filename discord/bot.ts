@@ -507,55 +507,62 @@ export async function createDiscordBot(
     throw error;
   }
 
-  // Event handlers
-  client.once(Events.ClientReady, async () => {
-    console.log(`Bot logged in: ${client.user?.tag}`);
-    console.log(`Category: ${actualCategoryName}`);
-    console.log(`Branch: ${branchName}`);
-    console.log(`Working directory: ${workDir}`);
+  // Wait for ClientReady to fully complete (including async channel setup)
+  // before returning, so callers can safely call getChannel() immediately.
+  const readyPromise = new Promise<void>((resolve, reject) => {
+    client.once(Events.ClientReady, async () => {
+      console.log(`Bot logged in: ${client.user?.tag}`);
+      console.log(`Category: ${actualCategoryName}`);
+      console.log(`Branch: ${branchName}`);
+      console.log(`Working directory: ${workDir}`);
 
-    const guilds = client.guilds.cache;
-    if (guilds.size === 0) {
-      console.error('Error: Bot is not in any servers');
-      return;
-    }
+      const guilds = client.guilds.cache;
+      if (guilds.size === 0) {
+        console.error('Error: Bot is not in any servers');
+        resolve();
+        return;
+      }
 
-    const guild = guilds.first();
-    if (!guild) {
-      console.error('Error: Guild not found');
-      return;
-    }
+      const guild = guilds.first();
+      if (!guild) {
+        console.error('Error: Guild not found');
+        resolve();
+        return;
+      }
 
-    try {
-      myChannel = await ensureChannelExists(guild);
-      console.log(`Using channel "${myChannel.name}"`);
+      try {
+        myChannel = await ensureChannelExists(guild);
+        console.log(`Using channel "${myChannel.name}"`);
 
-      await myChannel.send(convertMessageContent({
-        embeds: [{
-          color: 0x00ff00,
-          title: `🚀 v${BOT_VERSION} — Startup Complete`,
-          description: `Claude Code bot for branch ${branchName} has started`,
-          fields: [
-            { name: 'Category', value: actualCategoryName, inline: true },
-            { name: 'Repository', value: repoName, inline: true },
-            { name: 'Branch', value: branchName, inline: true },
-            { name: 'Working Directory', value: `\`${workDir}\``, inline: false }
-          ],
-          timestamp: true
-        }],
-        components: [{
-          type: 'actionRow',
-          components: [
-            { type: 'button', customId: 'startup:continue', label: '▶️ Resume Last', style: 'primary' },
-            { type: 'button', customId: 'startup:sessions', label: '📂 Sessions', style: 'secondary' },
-            { type: 'button', customId: 'workflow:git-status', label: '📋 Git Status', style: 'secondary' },
-            { type: 'button', customId: 'startup:system-info', label: '💻 System Info', style: 'secondary' },
-          ]
-        }]
-      }));
-    } catch (error) {
-      console.error('Channel creation/retrieval error:', error);
-    }
+        await myChannel.send(convertMessageContent({
+          embeds: [{
+            color: 0x00ff00,
+            title: `🚀 v${BOT_VERSION} — Startup Complete`,
+            description: `Claude Code bot for branch ${branchName} has started`,
+            fields: [
+              { name: 'Category', value: actualCategoryName, inline: true },
+              { name: 'Repository', value: repoName, inline: true },
+              { name: 'Branch', value: branchName, inline: true },
+              { name: 'Working Directory', value: `\`${workDir}\``, inline: false }
+            ],
+            timestamp: true
+          }],
+          components: [{
+            type: 'actionRow',
+            components: [
+              { type: 'button', customId: 'startup:continue', label: '▶️ Resume Last', style: 'primary' },
+              { type: 'button', customId: 'startup:sessions', label: '📂 Sessions', style: 'secondary' },
+              { type: 'button', customId: 'workflow:git-status', label: '📋 Git Status', style: 'secondary' },
+              { type: 'button', customId: 'startup:system-info', label: '💻 System Info', style: 'secondary' },
+            ]
+          }]
+        }));
+        resolve();
+      } catch (error) {
+        console.error('Channel creation/retrieval error:', error);
+        resolve(); // resolve even on error so the bot doesn't hang
+      }
+    });
   });
 
   client.on(Events.InteractionCreate, async (interaction) => {
@@ -640,8 +647,9 @@ export async function createDiscordBot(
     console.log(`[Monitor] Watching channel ${channelId} for messages from ${botIds.join(', ')}`);
   }
 
-  // Login
+  // Login and wait for ClientReady handler to complete
   await client.login(discordToken);
+  await readyPromise;
 
   // Return bot control functions
   return {
