@@ -5,6 +5,14 @@ import type { MessageContent, EmbedData, ComponentData } from "../discord/types.
 // Discord sender interface for dependency injection
 export interface DiscordSender {
   sendMessage(content: MessageContent): Promise<void>;
+  /** Send a message and return an opaque handle for later editing/deleting */
+  sendTracked?(content: MessageContent): Promise<TrackedMessage>;
+}
+
+/** Opaque handle to a sent Discord message */
+export interface TrackedMessage {
+  edit(content: MessageContent): Promise<void>;
+  delete(): Promise<void>;
 }
 
 // Store full content for expand functionality
@@ -138,17 +146,78 @@ function formatGenericTool(toolName: string, metadata: any): { title: string; co
   };
 }
 
+// Format a tool/system message into a short status line
+function toStatusLine(msg: ClaudeMessage): string | null {
+  switch (msg.type) {
+    case 'tool_use': {
+      const name = msg.metadata?.name || 'Unknown';
+      const input = msg.metadata?.input || {};
+      // Show concise context per tool
+      if (name === 'Bash') return `⚡ Running: \`${(input.command as string || '').substring(0, 80)}\``;
+      if (name === 'Read') return `📖 Reading: \`${input.file_path || ''}\``;
+      if (name === 'Edit' || name === 'Write') return `✏️ Editing: \`${input.file_path || ''}\``;
+      if (name === 'Glob') return `🔍 Searching: \`${input.pattern || ''}\``;
+      if (name === 'Grep') return `🔍 Grep: \`${input.pattern || ''}\``;
+      if (name === 'Agent') return `🤖 Spawning agent...`;
+      return `🔧 ${name}`;
+    }
+    case 'tool_result': return null; // don't update status for results
+    case 'tool_progress': return `⏳ ${msg.metadata?.toolName || 'Tool'} running... (${msg.metadata?.elapsedSeconds?.toFixed(0) || '?'}s)`;
+    case 'tool_summary': return null;
+    case 'system': {
+      if (msg.metadata?.subtype === 'completion') return null; // handled separately
+      return `⚙️ ${msg.metadata?.subtype || 'init'}`;
+    }
+    default: return null;
+  }
+}
+
 // Create sendClaudeMessages function with dependency injection
-export function createClaudeSender(sender: DiscordSender) {
+export function createClaudeSender(sender: DiscordSender, options?: { isThread?: boolean }) {
+  const isThread = options?.isThread ?? false;
+  // Live status message — single message that gets edited in place
+  let statusMsg: TrackedMessage | null = null;
+  let statusStartTime = 0;
+
+  async function updateStatus(line: string) {
+    if (!sender.sendTracked) return;
+    const elapsed = ((Date.now() - statusStartTime) / 1000).toFixed(0);
+    const content = `${line}  \`${elapsed}s\``;
+    try {
+      if (statusMsg) {
+        await statusMsg.edit({ content });
+      } else {
+        statusStartTime = Date.now();
+        statusMsg = await sender.sendTracked({ content: line });
+      }
+    } catch { /* message may have been deleted */ }
+  }
+
+  async function clearStatus() {
+    if (statusMsg) {
+      try { await statusMsg.delete(); } catch { /* ignore */ }
+      statusMsg = null;
+    }
+  }
+
   return async function sendClaudeMessages(messages: ClaudeMessage[]) {
   for (const msg of messages) {
-    // Check display filter — skip hidden message types
+    // Check display filter — hidden types get routed to live status
     if (msg.type === 'system') {
       const subkey = msg.metadata?.subtype === 'completion' ? 'system:completion' : 'system';
-      if (hiddenMessageTypes.has(subkey)) continue;
+      if (hiddenMessageTypes.has(subkey)) {
+        const line = toStatusLine(msg);
+        if (line) await updateStatus(line);
+        continue;
+      }
     } else if (hiddenMessageTypes.has(msg.type)) {
+      const line = toStatusLine(msg);
+      if (line) await updateStatus(line);
       continue;
     }
+
+    // Visible message arriving — clear the status indicator
+    await clearStatus();
 
     switch (msg.type) {
       case 'text': {
@@ -367,12 +436,12 @@ export function createClaudeSender(sender: DiscordSender) {
           ];
         }
         
-        // Add interactive buttons for completed sessions (but not shutdown messages)
+        // Add interactive buttons for completed sessions (but not in threads — users reply directly there)
         const messageContent: MessageContent = { embeds: [embedData] };
-        
-        if (msg.metadata?.subtype === 'completion' && msg.metadata?.session_id) {
+
+        if (!isThread && msg.metadata?.subtype === 'completion' && msg.metadata?.session_id) {
           const actionButtons = createActionButtons(msg.metadata.session_id);
-          
+
           messageContent.components = [
             { type: 'actionRow', components: actionButtons }
           ];

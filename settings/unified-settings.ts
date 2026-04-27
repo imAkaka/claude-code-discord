@@ -54,7 +54,7 @@ export interface UnifiedBotSettings {
   effortLevel: 'low' | 'medium' | 'high' | 'max';
   
   // Mode settings
-  operationMode: 'normal' | 'plan' | 'auto-accept' | 'danger' | 'dont-ask' | 'delegate';
+  operationMode: 'normal' | 'plan' | 'auto-accept' | 'danger' | 'dont-ask';
   
   // Fast mode — Opus 4.6 speed-optimized API config (2.5x faster, higher cost, same quality)
   fastMode: boolean;
@@ -233,7 +233,7 @@ export const EFFORT_LEVELS = {
 
 // Operation mode options — maps to SDK permissionMode
 // NOTE: In the new Claude Agent SDK (v0.2.45), there are 6 permission modes:
-//   default, acceptEdits, bypassPermissions, plan, delegate, dontAsk
+//   default, acceptEdits, bypassPermissions, plan, dontAsk, auto
 //
 // For Discord bots, 'dontAsk' is ideal — it auto-denies anything not pre-approved,
 // preventing the bot from hanging on interactive permission prompts.
@@ -269,12 +269,6 @@ export const OPERATION_MODES = {
     permissionMode: 'bypassPermissions' as const,
     riskLevel: 'high'
   },
-  'delegate': {
-    name: 'Delegate Mode',
-    description: 'Restricts to Teammate + Task tools only — for agent team leaders',
-    permissionMode: 'delegate' as const,
-    riskLevel: 'low'
-  }
 } as const;
 
 // Rate limit tiers for todos command

@@ -142,7 +142,7 @@ export async function createClaudeCodeBot(config: BotConfig) {
             await existingThread.setArchived(false);
           }
           sessionThreadManager.recordActivity(sessionId);
-          const threadSender = createClaudeSender(createChannelSenderAdapter(existingThread));
+          const threadSender = createClaudeSender(createChannelSenderAdapter(existingThread), { isThread: true });
           return { sender: threadSender, threadSessionKey: sessionId, threadChannelId: existingThread.id };
         }
       }
@@ -166,7 +166,7 @@ export async function createClaudeCodeBot(config: BotConfig) {
         }],
       });
 
-      const threadSender = createClaudeSender(createChannelSenderAdapter(thread));
+      const threadSender = createClaudeSender(createChannelSenderAdapter(thread), { isThread: true });
       return { sender: threadSender, threadSessionKey: placeholderKey, threadChannelId: thread.id };
     },
 
@@ -178,7 +178,7 @@ export async function createClaudeCodeBot(config: BotConfig) {
         await existingThread.setArchived(false);
       }
       sessionThreadManager.recordActivity(sessionId);
-      const threadSender = createClaudeSender(createChannelSenderAdapter(existingThread));
+      const threadSender = createClaudeSender(createChannelSenderAdapter(existingThread), { isThread: true });
       return { sender: threadSender, threadSessionKey: sessionId };
     },
 
@@ -309,7 +309,7 @@ export async function createClaudeCodeBot(config: BotConfig) {
           ].join("\n");
 
           // Create a sender bound to the alert thread, not the bot's main channel
-          const threadSender = createClaudeSender(createChannelSenderAdapter(thread));
+          const threadSender = createClaudeSender(createChannelSenderAdapter(thread), { isThread: true });
 
           const controller = new AbortController();
           await sendToClaudeCode(
@@ -340,7 +340,7 @@ export async function createClaudeCodeBot(config: BotConfig) {
       // Post a "thinking" indicator
       const thinkingMsg = await thread.send('`Claude is thinking...`');
 
-      const threadSender = createClaudeSender(createChannelSenderAdapter(thread));
+      const threadSender = createClaudeSender(createChannelSenderAdapter(thread), { isThread: true });
       const controller = new AbortController();
       claudeController = controller;
 
@@ -524,6 +524,15 @@ async function sendMessageContent(channel: any, content: MessageContent): Promis
   await channel.send(payload);
 }
 
+/** Like sendMessageContent but returns the Message object for later editing/deleting. */
+// deno-lint-ignore no-explicit-any
+async function sendMessageContentTracked(channel: any, content: MessageContent): Promise<any> {
+  // deno-lint-ignore no-explicit-any
+  const payload: any = {};
+  if (content.content) payload.content = content.content;
+  return await channel.send(payload);
+}
+
 /**
  * Create Discord sender adapter from bot instance.
  */
@@ -547,7 +556,21 @@ function createChannelSenderAdapter(channel: any): DiscordSender {
   return {
     async sendMessage(content) {
       await sendMessageContent(channel, content);
-    }
+    },
+    async sendTracked(content) {
+      const msg = await sendMessageContentTracked(channel, content);
+      return {
+        async edit(newContent) {
+          // deno-lint-ignore no-explicit-any
+          const payload: any = {};
+          if (newContent.content) payload.content = newContent.content;
+          await msg.edit(payload);
+        },
+        async delete() {
+          await msg.delete();
+        },
+      };
+    },
   };
 }
 

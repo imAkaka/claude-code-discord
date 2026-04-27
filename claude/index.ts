@@ -20,7 +20,7 @@ export {
   resolveModelId,
   isValidModel
 } from "./enhanced-client.ts";
-export type { DiscordSender } from "./discord-sender.ts";
+export type { DiscordSender, TrackedMessage } from "./discord-sender.ts";
 export type { ClaudeMessage } from "./types.ts";
 export type {
   EnhancedClaudeOptions,
