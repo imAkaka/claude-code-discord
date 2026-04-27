@@ -27,10 +27,10 @@ interface RecentSession {
 async function readRecentSessions(workDir: string): Promise<RecentSession[]> {
   try {
     // Build project slug: absolute path with separators replaced
+    // On Unix, paths start with '/' which becomes '-' — Claude Code keeps this leading dash.
     const slug = workDir
       .replace(/^[A-Za-z]:/, (m) => m[0].toUpperCase())
-      .replace(/[\\/]/g, '-')
-      .replace(/^-/, '');
+      .replace(/[\\/]/g, '-');
 
     const homeDir = Deno.env.get('USERPROFILE') || Deno.env.get('HOME') || '';
     const projectDir = `${homeDir}/.claude/projects/${slug}`;

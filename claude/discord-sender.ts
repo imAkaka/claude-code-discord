@@ -180,16 +180,26 @@ export function createClaudeSender(sender: DiscordSender, options?: { isThread?:
   let statusMsg: TrackedMessage | null = null;
   let statusStartTime = 0;
 
+  // Track whether a visible message was sent since the last status update.
+  // When true, the next status update should create a new message at the bottom
+  // instead of editing the old one (which would be above the new visible content).
+  let visibleSentSinceStatus = false;
+
   async function updateStatus(line: string) {
     if (!sender.sendTracked) return;
     const elapsed = ((Date.now() - statusStartTime) / 1000).toFixed(0);
     const content = `${line}  \`${elapsed}s\``;
     try {
-      if (statusMsg) {
+      if (statusMsg && !visibleSentSinceStatus) {
         await statusMsg.edit({ content });
       } else {
+        // Delete old status if it's stuck above new content
+        if (statusMsg) {
+          try { await statusMsg.delete(); } catch { /* ignore */ }
+        }
         statusStartTime = Date.now();
         statusMsg = await sender.sendTracked({ content: line });
+        visibleSentSinceStatus = false;
       }
     } catch { /* message may have been deleted */ }
   }
@@ -217,8 +227,8 @@ export function createClaudeSender(sender: DiscordSender, options?: { isThread?:
       continue;
     }
 
-    // Visible message arriving — clear the status indicator
-    await clearStatus();
+    // Visible message arriving — mark status as stale so next update goes to bottom
+    visibleSentSinceStatus = true;
 
     switch (msg.type) {
       case 'text': {
@@ -396,6 +406,9 @@ export function createClaudeSender(sender: DiscordSender, options?: { isThread?:
       }
       
       case 'system': {
+        // Session ending — clean up status line
+        if (msg.metadata?.subtype === 'completion') await clearStatus();
+
         const embedData: EmbedData = {
           color: msg.metadata?.subtype === 'completion' ? 0x00ff00 : 0xaaaaaa,
           title: msg.metadata?.subtype === 'completion' ? '✅ Claude Code Complete' : `⚙️ System: ${msg.metadata?.subtype || 'info'}`,
