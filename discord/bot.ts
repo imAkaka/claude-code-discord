@@ -568,6 +568,27 @@ export async function createDiscordBot(
     }
   });
 
+  // Auto-resume: plain text messages in session threads trigger Claude
+  if (dependencies.onThreadMessage) {
+    const onThreadMessage = dependencies.onThreadMessage;
+    client.on(Events.MessageCreate, async (message: Message) => {
+      // Ignore bot messages and slash commands
+      if (message.author.bot) return;
+      if (message.content.startsWith('/')) return;
+      if (!message.content.trim()) return;
+
+      // Only handle messages inside threads that belong to our channel
+      if (!message.channel.isThread()) return;
+      if (!myChannel || message.channel.parentId !== myChannel.id) return;
+
+      try {
+        await onThreadMessage(message.channelId, message.content);
+      } catch (error) {
+        console.error('[ThreadMessage] Error handling thread message:', error);
+      }
+    });
+  }
+
   // Channel monitoring -- auto-respond to messages from specific bots/webhooks
   if (dependencies.monitorConfig) {
     const { channelId, botIds, onAlertMessage } = dependencies.monitorConfig;

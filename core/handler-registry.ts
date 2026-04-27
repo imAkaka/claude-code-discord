@@ -35,6 +35,8 @@ import type { PermissionRequestCallback } from "../claude/index.ts";
 import { buildHooks } from "../claude/hooks.ts";
 import type { HookEvent_Discord } from "../claude/hooks.ts";
 import { THINKING_MODES, OPERATION_MODES, EFFORT_LEVELS } from "../settings/index.ts";
+import { hiddenMessageTypes } from "../claude/index.ts";
+import { SlashCommandBuilder } from "npm:discord.js@14.14.1";
 
 import type { ShellManager } from "../shell/index.ts";
 import type { WorktreeBotManager } from "../git/index.ts";
@@ -639,6 +641,19 @@ export function createAllHandlers(
   };
 }
 
+// Display toggle commands — control which message types are shown in threads
+const displayToggleCommands = [
+  new SlashCommandBuilder()
+    .setName('show-system')
+    .setDescription('Toggle system messages (init, completion) on/off'),
+  new SlashCommandBuilder()
+    .setName('show-tool-details')
+    .setDescription('Toggle tool messages (tool_use, tool_result, progress, summary) on/off'),
+  new SlashCommandBuilder()
+    .setName('show-thinking')
+    .setDescription('Toggle thinking messages on/off'),
+];
+
 /**
  * Get all command definitions for bot registration.
  *
@@ -659,6 +674,7 @@ export function getAllCommands() {
     ...screenshotCommands,
     ...infoCommands,
     helpCommand,
+    ...displayToggleCommands,
   ];
 }
 

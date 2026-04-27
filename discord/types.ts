@@ -127,4 +127,6 @@ export interface BotDependencies {
   onContinueSession?: (ctx: InteractionContext) => Promise<void>;
   /** Optional channel monitoring config for auto-responding to messages */
   monitorConfig?: MonitorConfig;
+  /** Callback for plain text messages in session threads (auto-resume) */
+  onThreadMessage?: (channelId: string, content: string) => Promise<void>;
 }

@@ -5,6 +5,9 @@
  * All output, AskUser prompts, and permission requests for that session
  * are routed into the thread, keeping the main channel clean.
  *
+ * Session-to-thread mappings are persisted to disk so that conversations
+ * survive bot restarts.
+ *
  * @module discord/session-threads
  */
 
@@ -14,7 +17,23 @@ import {
   type ThreadChannel,
 } from "npm:discord.js@14.14.1";
 
+import { ensureDir } from "https://deno.land/std@0.208.0/fs/mod.ts";
+import * as path from "https://deno.land/std@0.208.0/path/mod.ts";
+
 import type { SessionThread } from "./types.ts";
+
+/** Shape stored on disk (dates serialized as ISO strings). */
+interface PersistedSession {
+  sessionId: string;
+  threadId: string;
+  threadName: string;
+  createdAt: string;
+  lastActivity: string;
+  messageCount: number;
+}
+
+const DATA_DIR = ".bot-data";
+const SESSIONS_FILE = "session-threads.json";
 
 /**
  * Truncate and sanitise a user prompt into a thread name (max 100 chars for Discord).
@@ -39,6 +58,113 @@ export class SessionThreadManager {
   private threads = new Map<string, SessionThread>();
   /** sessionId → live ThreadChannel reference (may be stale) */
   private threadChannels = new Map<string, ThreadChannel>();
+
+  private filePath: string;
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(dataDir?: string) {
+    this.filePath = path.join(dataDir || DATA_DIR, SESSIONS_FILE);
+  }
+
+  // ───────────────────── Persistence ─────────────────────
+
+  /**
+   * Load persisted session mappings from disk.
+   * Call once at startup, before the bot starts receiving messages.
+   * ThreadChannel references are NOT restored here — call restoreThreadChannels()
+   * after the Discord client is ready.
+   */
+  async loadFromDisk(): Promise<number> {
+    try {
+      const content = await Deno.readTextFile(this.filePath);
+      const records: PersistedSession[] = JSON.parse(content);
+      for (const r of records) {
+        // Skip placeholder sessions that never got a real ID
+        if (r.sessionId.startsWith("pending_")) continue;
+        this.threads.set(r.sessionId, {
+          sessionId: r.sessionId,
+          threadId: r.threadId,
+          threadName: r.threadName,
+          createdAt: new Date(r.createdAt),
+          lastActivity: new Date(r.lastActivity),
+          messageCount: r.messageCount,
+        });
+      }
+      console.log(`SessionThreads: Restored ${this.threads.size} sessions from disk`);
+      return this.threads.size;
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        console.log("SessionThreads: No persisted sessions found, starting fresh");
+      } else {
+        console.error("SessionThreads: Failed to load from disk:", error);
+      }
+      return 0;
+    }
+  }
+
+  /**
+   * After Discord client is ready, resolve threadId → ThreadChannel for restored sessions.
+   * Sessions whose threads can't be found are removed.
+   */
+  async restoreThreadChannels(channel: TextChannel): Promise<number> {
+    let restored = 0;
+    const toRemove: string[] = [];
+
+    for (const [sessionId, meta] of this.threads) {
+      // Skip if we already have a live channel reference
+      if (this.threadChannels.has(sessionId)) continue;
+      try {
+        const thread = await channel.threads.fetch(meta.threadId);
+        if (thread) {
+          this.threadChannels.set(sessionId, thread);
+          restored++;
+        } else {
+          toRemove.push(sessionId);
+        }
+      } catch {
+        toRemove.push(sessionId);
+      }
+    }
+
+    for (const id of toRemove) {
+      this.threads.delete(id);
+    }
+
+    if (toRemove.length > 0) {
+      console.log(`SessionThreads: Removed ${toRemove.length} stale sessions (thread not found)`);
+      this.schedulePersist();
+    }
+    console.log(`SessionThreads: Restored ${restored} thread channels`);
+    return restored;
+  }
+
+  /** Write current state to disk (debounced). */
+  private schedulePersist(): void {
+    if (this.persistTimer) clearTimeout(this.persistTimer);
+    this.persistTimer = setTimeout(() => this.persistToDisk(), 1000);
+  }
+
+  private async persistToDisk(): Promise<void> {
+    try {
+      await ensureDir(path.dirname(this.filePath));
+      const records: PersistedSession[] = [];
+      for (const meta of this.threads.values()) {
+        // Don't persist placeholder sessions
+        if (meta.sessionId.startsWith("pending_")) continue;
+        records.push({
+          sessionId: meta.sessionId,
+          threadId: meta.threadId,
+          threadName: meta.threadName,
+          createdAt: meta.createdAt.toISOString(),
+          lastActivity: meta.lastActivity.toISOString(),
+          messageCount: meta.messageCount,
+        });
+      }
+      await Deno.writeTextFile(this.filePath, JSON.stringify(records, null, 2));
+    } catch (error) {
+      console.error("SessionThreads: Failed to persist:", error);
+    }
+  }
 
   // ───────────────────── Create ─────────────────────
 
@@ -76,6 +202,7 @@ export class SessionThreadManager {
 
     this.threads.set(sessionId, meta);
     this.threadChannels.set(sessionId, thread);
+    this.schedulePersist();
 
     return thread;
   }
@@ -133,6 +260,7 @@ export class SessionThreadManager {
     if (meta) {
       meta.lastActivity = new Date();
       meta.messageCount++;
+      this.schedulePersist();
     }
   }
 
@@ -154,6 +282,8 @@ export class SessionThreadManager {
       this.threadChannels.delete(oldId);
       this.threadChannels.set(newId, channel);
     }
+
+    this.schedulePersist();
   }
 
   /**
@@ -179,6 +309,7 @@ export class SessionThreadManager {
         removed++;
       }
     }
+    if (removed > 0) this.schedulePersist();
     return removed;
   }
 }

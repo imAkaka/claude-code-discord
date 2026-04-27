@@ -123,7 +123,9 @@ export async function createClaudeCodeBot(config: BotConfig) {
   let claudeSender: ((messages: ClaudeMessage[]) => Promise<void>) | null = null;
 
   // Session thread manager — maps each Claude session to a dedicated Discord thread
+  // Load persisted sessions so conversations survive restarts.
   const sessionThreadManager = new SessionThreadManager();
+  await sessionThreadManager.loadFromDisk();
 
   // Session thread callbacks — used by claude/command.ts for /claude-thread and /resume.
   // The callbacks are closures over `bot` (late-bound) and `sessionThreadManager`.
@@ -327,10 +329,55 @@ export async function createClaudeCodeBot(config: BotConfig) {
         },
       },
     }),
+    // Auto-resume: plain text in session threads triggers Claude
+    onThreadMessage: async (threadChannelId: string, content: string) => {
+      const sessionId = sessionThreadManager.findSessionByThreadId(threadChannelId);
+      if (!sessionId) return;
+
+      const thread = sessionThreadManager.getThread(sessionId);
+      if (!thread) return;
+
+      // Post a "thinking" indicator
+      const thinkingMsg = await thread.send('`Claude is thinking...`');
+
+      const threadSender = createClaudeSender(createChannelSenderAdapter(thread));
+      const controller = new AbortController();
+      claudeController = controller;
+
+      try {
+        const result = await sendToClaudeCode(
+          workDir,
+          content,
+          controller,
+          sessionId, // resume existing session
+          undefined,
+          (jsonData) => {
+            const claudeMessages = convertToClaudeMessages(jsonData);
+            if (claudeMessages.length > 0) {
+              threadSender(claudeMessages).catch(() => {});
+            }
+          },
+          false,
+        );
+
+        if (result.sessionId) {
+          claudeSessionId = result.sessionId;
+        }
+      } finally {
+        claudeController = null;
+        try { await thinkingMsg.delete(); } catch { /* ignore */ }
+      }
+    },
   };
 
   // Create Discord bot
   bot = await createDiscordBot(config, handlers, buttonHandlers, dependencies, crashHandler);
+
+  // Restore persisted session → thread channel mappings now that Discord is ready
+  const mainChannel = bot.getChannel() as TextChannel | null;
+  if (mainChannel) {
+    await sessionThreadManager.restoreThreadChannels(mainChannel);
+  }
 
   // Create Discord sender for Claude messages
   claudeSender = createClaudeSender(createDiscordSenderAdapter(bot));

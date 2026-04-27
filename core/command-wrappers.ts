@@ -9,7 +9,7 @@ import type { CommandHandlers, InteractionContext } from "../discord/index.ts";
 import { formatShellOutput, formatGitOutput, formatError, createFormattedEmbed } from "../discord/index.ts";
 import type { AllHandlers, MessageHistoryOps } from "./handler-registry.ts";
 import type { ProcessCrashHandler, ProcessHealthMonitor } from "../process/index.ts";
-import { expandableContent } from "../claude/index.ts";
+import { expandableContent, hiddenMessageTypes } from "../claude/index.ts";
 
 // ================================
 // Types
@@ -592,6 +592,49 @@ export function createAllCommandHandlers(deps: CommandWrapperDeps): CommandHandl
   const shellHandlers = createShellCommandHandlers(gitShellDeps);
   const utilityHandlers = createUtilityCommandHandlers(gitShellDeps);
 
+  // Display toggle handlers
+  const displayToggleHandlers: CommandHandlers = new Map();
+
+  displayToggleHandlers.set('show-system', {
+    async execute(ctx: InteractionContext) {
+      const systemTypes = ['system', 'system:completion'];
+      const allHidden = systemTypes.every(t => hiddenMessageTypes.has(t));
+      if (allHidden) {
+        systemTypes.forEach(t => hiddenMessageTypes.delete(t));
+        await ctx.reply({ content: 'System messages **enabled** (init, completion).', ephemeral: true });
+      } else {
+        systemTypes.forEach(t => hiddenMessageTypes.add(t));
+        await ctx.reply({ content: 'System messages **hidden**.', ephemeral: true });
+      }
+    }
+  });
+
+  displayToggleHandlers.set('show-tool-details', {
+    async execute(ctx: InteractionContext) {
+      const toolTypes = ['tool_use', 'tool_result', 'tool_progress', 'tool_summary'];
+      const allHidden = toolTypes.every(t => hiddenMessageTypes.has(t));
+      if (allHidden) {
+        toolTypes.forEach(t => hiddenMessageTypes.delete(t));
+        await ctx.reply({ content: 'Tool detail messages **enabled** (tool_use, tool_result, progress, summary).', ephemeral: true });
+      } else {
+        toolTypes.forEach(t => hiddenMessageTypes.add(t));
+        await ctx.reply({ content: 'Tool detail messages **hidden**.', ephemeral: true });
+      }
+    }
+  });
+
+  displayToggleHandlers.set('show-thinking', {
+    async execute(ctx: InteractionContext) {
+      if (hiddenMessageTypes.has('thinking')) {
+        hiddenMessageTypes.delete('thinking');
+        await ctx.reply({ content: 'Thinking messages **enabled**.', ephemeral: true });
+      } else {
+        hiddenMessageTypes.add('thinking');
+        await ctx.reply({ content: 'Thinking messages **hidden**.', ephemeral: true });
+      }
+    }
+  });
+
   // Combine all handlers into single map
   const commandHandlers: CommandHandlers = new Map([
     ...systemHandlers,
@@ -603,6 +646,7 @@ export function createAllCommandHandlers(deps: CommandWrapperDeps): CommandHandl
     ...gitHandlers,
     ...shellHandlers,
     ...utilityHandlers,
+    ...displayToggleHandlers,
   ]);
 
   return commandHandlers;

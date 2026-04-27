@@ -195,8 +195,8 @@ export async function sendToClaudeCode(
       // Determine which model to use
       const modelToUse = overrideModel || modelOptions?.model;
       
-      // Determine permission mode (defaults to dontAsk for Discord — denies anything not pre-approved)
-      const permMode = modelOptions?.permissionMode || "dontAsk";
+      // Determine permission mode (defaults to acceptEdits for Discord)
+      const permMode = modelOptions?.permissionMode || "acceptEdits";
       
       // Build environment variables for the subprocess
       const envVars: Record<string, string> = {
@@ -261,6 +261,17 @@ export async function sendToClaudeCode(
           // NOTE: The SDK's runtime Zod schema requires `updatedInput` on allow responses
           // even though the TypeScript types mark it optional — pass through original input.
           canUseTool: async (toolName: string, input: Record<string, unknown>) => {
+            // Read/search/navigation tools — always allow without prompting
+            const readOnlyTools = new Set([
+              'Read', 'Glob', 'Grep', 'Skill', 'ToolSearch',
+              'WebFetch', 'WebSearch', 'LSP',
+              'TaskCreate', 'TaskGet', 'TaskList', 'TaskUpdate', 'TaskStop', 'TaskOutput',
+              'Agent', 'EnterPlanMode', 'ExitPlanMode',
+            ]);
+            if (readOnlyTools.has(toolName)) {
+              return { behavior: 'allow' as const, updatedInput: input };
+            }
+
             // AskUserQuestion: route to Discord interactive flow
             if (toolName === 'AskUserQuestion' && modelOptions?.onAskUser) {
               try {

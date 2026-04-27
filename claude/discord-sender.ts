@@ -10,6 +10,17 @@ export interface DiscordSender {
 // Store full content for expand functionality
 export const expandableContent = new Map<string, string>();
 
+// Message types that are hidden by default — toggled via /show_system, /show_tool_details
+// Key = message type (or "system:init" for non-completion system messages)
+export const hiddenMessageTypes = new Set<string>([
+  'system',           // ⚙️ System: init, etc. (non-completion)
+  'system:completion', // ✅ Claude Code Complete
+  'tool_use',         // 🔧 Tool Use
+  'tool_result',      // ✅ Tool Result
+  'tool_progress',    // ⏳ running...
+  'tool_summary',     // 📋 Tool Summary
+]);
+
 // Helper function to create action buttons for completed sessions
 function createActionButtons(sessionId?: string): ComponentData[] {
   const buttons: ComponentData[] = [];
@@ -131,18 +142,19 @@ function formatGenericTool(toolName: string, metadata: any): { title: string; co
 export function createClaudeSender(sender: DiscordSender) {
   return async function sendClaudeMessages(messages: ClaudeMessage[]) {
   for (const msg of messages) {
+    // Check display filter — skip hidden message types
+    if (msg.type === 'system') {
+      const subkey = msg.metadata?.subtype === 'completion' ? 'system:completion' : 'system';
+      if (hiddenMessageTypes.has(subkey)) continue;
+    } else if (hiddenMessageTypes.has(msg.type)) {
+      continue;
+    }
+
     switch (msg.type) {
       case 'text': {
-        const chunks = splitText(msg.content, 4000);
-        for (let i = 0; i < chunks.length; i++) {
-          await sender.sendMessage({
-            embeds: [{
-              color: 0x00ff00,
-              title: chunks.length > 1 ? `Assistant (${i + 1}/${chunks.length})` : 'Assistant',
-              description: chunks[i],
-              timestamp: true
-            }]
-          });
+        const chunks = splitText(msg.content, 2000);
+        for (const chunk of chunks) {
+          await sender.sendMessage({ content: chunk });
         }
         break;
       }
