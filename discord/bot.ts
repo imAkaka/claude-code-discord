@@ -498,7 +498,7 @@ export async function createDiscordBot(
   try {
     console.log('Registering slash commands...');
     await rest.put(
-      Routes.applicationCommands(applicationId),
+      Routes.applicationGuildCommands(applicationId, Deno.env.get('GUILD_ID') || ''),
       { body: commands.map(cmd => cmd.toJSON()) },
     );
     console.log('Slash commands registered');

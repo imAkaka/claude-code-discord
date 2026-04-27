@@ -16,13 +16,6 @@
         "@anthropic-ai/sequential-thinking-mcp"
       ],
       "description": "Enhanced reasoning for complex multi-step problems"
-    },
-    "webhook-mcp-server": {
-      "command": "uvx",
-      "args": [
-        "webhook-mcp-server"
-      ],
-      "description": "Webhook.site MCP for capturing HTTP requests, emails, DNS lookups, and security testing"
     }
   }
 }
