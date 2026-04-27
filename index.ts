@@ -334,6 +334,12 @@ export async function createClaudeCodeBot(config: BotConfig) {
       const sessionId = sessionThreadManager.findSessionByThreadId(threadChannelId);
       if (!sessionId) return;
 
+      // Skip if the session is still being created or failed before getting a real ID
+      if (sessionId.startsWith('pending_') || sessionId.startsWith('failed_')) {
+        console.warn(`[ThreadMessage] Session not ready (${sessionId.slice(0, 20)}…), ignoring message`);
+        return;
+      }
+
       const thread = sessionThreadManager.getThread(sessionId);
       if (!thread) return;
 

@@ -210,21 +210,30 @@ export function createClaudeHandlers(deps: ClaudeHandlerDeps) {
         }]
       });
 
-      const result = await sendToClaudeCode(
-        workDir,
-        prompt,
-        controller,
-        undefined, // always a new session
-        undefined,
-        (jsonData) => {
-          const claudeMessages = convertToClaudeMessages(jsonData);
-          if (claudeMessages.length > 0) {
-            activeSender(claudeMessages).catch(() => {});
-          }
-        },
-        false,
-        deps.getQueryOptions?.()
-      );
+      let result;
+      try {
+        result = await sendToClaudeCode(
+          workDir,
+          prompt,
+          controller,
+          undefined, // always a new session
+          undefined,
+          (jsonData) => {
+            const claudeMessages = convertToClaudeMessages(jsonData);
+            if (claudeMessages.length > 0) {
+              activeSender(claudeMessages).catch(() => {});
+            }
+          },
+          false,
+          deps.getQueryOptions?.()
+        );
+      } catch (err) {
+        // Clean up the pending placeholder so thread messages don't try to resume it
+        if (threadSessionKey && deps.sessionThreads) {
+          deps.sessionThreads.updateSessionId(threadSessionKey, `failed_${threadSessionKey}`);
+        }
+        throw err;
+      }
 
       deps.setClaudeSessionId(result.sessionId);
       deps.setClaudeController(null);

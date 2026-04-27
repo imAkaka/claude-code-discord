@@ -291,8 +291,9 @@ export async function sendToClaudeCode(
               }
             }
 
-            // MCP tools: auto-allow tools from configured servers
-            if (mcpToolPrefixes.some(prefix => toolName.startsWith(prefix))) {
+            // MCP tools: auto-allow ALL MCP tools (SDK loads servers from
+            // project, user, and plugin configs — not just project mcp.json)
+            if (toolName.startsWith('mcp__')) {
               return { behavior: 'allow' as const, updatedInput: input };
             }
 

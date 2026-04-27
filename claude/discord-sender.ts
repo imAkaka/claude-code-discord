@@ -493,7 +493,7 @@ export function createClaudeSender(sender: DiscordSender, options?: { isThread?:
           embeds: [{
             color: 0xff4444,
             title: `🚫 Permission Denied: ${toolName}`,
-            description: 'This tool was blocked by the current permission mode (`dontAsk`). The bot denies tools that aren\'t pre-approved.',
+            description: 'This tool was blocked — it isn\'t in the pre-approved whitelist and no interactive permission handler matched.',
             fields: [
               { name: 'Tool', value: `\`${toolName}\``, inline: true },
               { name: 'Input Preview', value: `\`\`\`json\n${preview}\n\`\`\``, inline: false }
