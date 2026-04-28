@@ -12,7 +12,7 @@ const denoConfig = JSON.parse(Deno.readTextFileSync("deno.json"));
 /** Current bot version from deno.json */
 export const BOT_VERSION: string = denoConfig.version ?? "unknown";
 
-const REPO_OWNER = "Webot-Official";
+const REPO_OWNER = "imAkaka";
 const REPO_NAME = "claude-code-discord";
 
 export interface VersionCheckResult {
@@ -122,9 +122,7 @@ export async function runVersionCheck(): Promise<{
         { name: "Latest Commit", value: `\`${result.remoteCommit}\``, inline: true },
         {
           name: "How to Update",
-          value: Deno.env.get("DOCKER_CONTAINER")
-            ? "```\ndocker compose pull && docker compose up -d\n```"
-            : "```\ngit pull origin main && deno task start\n```",
+          value: "```\ngit pull origin main && ./start.sh restart\n```",
           inline: false
         },
       ],
