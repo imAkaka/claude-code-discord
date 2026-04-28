@@ -2,40 +2,41 @@
 
 # claude-code-discord
 
-**Run Claude Code from Discord with full SDK integration, agents, rewind, mid-session controls and more.**
+**Self-hosted Discord interface for Claude Code — your existing MCP servers, skills, and CLAUDE.md just work.**
 
-A private fork of [zebbern/claude-code-discord](https://github.com/zebbern/claude-code-discord) with enhanced features for production use.
-
-<kbd>
-
-| Feature | Details | Status |
-|---------|---------|:------:|
-| Use Claude Code Anywhere | Host locally (VM / cloud) and send commands via the Discord API | ✅ |
-| Thread-per-session | Each `/claude-thread` conversation gets its own Discord thread with custom names | ✅ |
-| Session persistence & auto-resume | Sessions survive restarts; posting in a thread auto-resumes Claude | ✅ |
-| Live status indicator | Compact, auto-updating status line for hidden tool/system messages | ✅ |
-| Message filtering | Toggle visibility of system, tool, and thinking messages per channel | ✅ |
-| Granular sandbox config | Full SDK sandbox with network rules, filesystem ACLs, and excluded commands | ✅ |
-| Local hosting & security | Keep keys and code on your infra while exposing a controlled interface through Discord | ✅ |
-| Centralized collaboration | Run commands and discuss results where your team already communicates | ✅ |
-| Branch-aware organization | Maps Git branches to channels/categories so feature work stays separated | ✅ |
-| Mid-session controls | Interrupt, change model, change permissions, stop tasks, and rewind without restarting | ✅ |
-| MCP server management | View status, toggle, and reconnect MCP servers mid-session | ✅ |
-| Hooks system | Passive SDK callbacks for tool use, notification, and task completion observability | ✅ |
-| Full SDK Integration | Built on `@anthropic-ai/claude-agent-sdk` with native agent support | ✅ |
-| AskUserQuestion | Claude can ask clarifying questions mid-session via Discord buttons | ✅ |
-| Auto-allow MCP tools | All `mcp__*` tools auto-approved without interactive prompts | ✅ |
-| Interactive permission prompts | Allow/Deny buttons when Claude wants to use unapproved tools | ✅ |
-| Role-based access control | Restrict destructive commands (`/shell`, `/git`, worktree ops) to specific Discord roles | ✅ |
-| AWS Bedrock support | `/refresh-bedrock` command for enterprise AWS SSO credential refresh | ✅ |
-| Channel monitoring | Watch a channel for bot/webhook messages and auto-investigate in a thread | ✅ |
-| Audit trail & accountability | Channel history provides an easy-to-search record of who ran what and when | ✅ |
-
-</kbd>
+Based on [zebbern/claude-code-discord](https://github.com/zebbern/claude-code-discord), enhanced for production team use.
 
 </div>
 
-<br>
+## Why This Exists
+
+Run Claude Code through Discord without giving up anything you've already configured locally:
+
+- **Zero third-party dependencies** — only [`discord.js`](https://discord.js.org/) and [`@anthropic-ai/claude-agent-sdk`](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk). No wrapper services, no proxy layers, no data leaves your machine except to Discord and Anthropic/Bedrock.
+- **Your config, automatically** — the bot reads your project's `.claude/mcp.json`, `CLAUDE.md`, and `settings.local.json` at session start. MCP servers, skills, hooks, and custom instructions carry over as-is.
+- **AWS Bedrock native** — route all inference through your organization's Bedrock endpoint. No Anthropic API key required; credentials managed via AWS SSO with in-Discord refresh (`/refresh-bedrock`).
+- **No magic, no reinvention** — this bot doesn't bolt on its own memory system, RAG pipeline, or tool framework. Claude Code already has MCP, skills, hooks, and project memory — this project just exposes them through Discord. The capabilities you get are exactly the capabilities you've configured in your Claude Code environment. Want more? Add an MCP server or write a skill.
+
+## Features
+
+<kbd>
+
+| Feature | Details |
+|---------|---------|
+| Thread-per-session | Each `/claude-thread` conversation gets its own Discord thread with custom names |
+| Session persistence & auto-resume | Sessions survive restarts; posting in a thread auto-resumes Claude |
+| Live status indicator | Compact, auto-updating status line for hidden tool/system messages |
+| MCP server injection | Loads `.claude/mcp.json` from project; all `mcp__*` tools auto-approved |
+| Config inheritance | Reads `CLAUDE.md`, `settings.local.json`, and user-level settings — same context as local CLI |
+| AWS Bedrock support | `/refresh-bedrock` for enterprise AWS SSO credential refresh |
+| Mid-session controls | Interrupt, change model, change permissions, stop tasks, and rewind without restarting |
+| Granular sandbox | Full SDK sandbox with network rules, filesystem ACLs, and excluded commands |
+| Role-based access control | Restrict destructive commands (`/shell`, `/git`, worktree ops) to specific Discord roles |
+| Interactive permission prompts | Allow/Deny buttons when Claude wants to use unapproved tools |
+| Channel monitoring | Watch a channel for bot/webhook messages and auto-investigate in a thread |
+| Audit trail | Channel history provides a searchable record of who ran what and when |
+
+</kbd>
 
 ## Quick Start
 
