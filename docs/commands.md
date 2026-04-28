@@ -90,11 +90,20 @@
 | `/uptime` | System uptime. |
 | `/screenshot` | Capture a screenshot of the host display. Options: `delay`. |
 
-## Utilities (4)
+## Display Controls (3)
+
+| Command | Description |
+|---------|-------------|
+| `/show-system` | Toggle visibility of system messages (init, completion). |
+| `/show-tool-details` | Toggle visibility of tool use/result/progress/summary messages. |
+| `/show-thinking` | Toggle visibility of Claude's thinking/reasoning messages. |
+
+## Utilities (5)
 
 | Command | Description |
 |---------|-------------|
 | `/status` | Bot status and health check. |
 | `/pwd` | Show current working directory. |
+| `/refresh-bedrock` | Refresh AWS Bedrock credentials via SSO login (`aws sso login --profile enterprise-ai`). |
 | `/shutdown` | Gracefully stop the bot. |
 | `/help` | Show all available commands. |

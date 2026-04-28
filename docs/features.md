@@ -51,6 +51,12 @@ Set via `/settings` > `claude` > `set-effort`.
 | Interactive Permission Requests | Allow/Deny buttons when Claude wants to use unapproved tools (replaces CLI TUI prompt) |
 | Channel Monitoring | Auto-detect bot/webhook messages and trigger Claude investigation in a thread |
 | Thread-per-Session | Dedicated Discord thread for each `/claude-thread` conversation with custom names |
+| Session Persistence | Sessions survive bot restarts — threads restored with full context |
+| Thread Auto-Resume | Post plain text in a session thread to automatically resume Claude |
+| Live Status Indicator | Compact, auto-updating status line for hidden tool/system activity |
+| Message Filtering | Toggle visibility of system, tool, and thinking messages via `/show-*` commands |
+| Auto-Allow MCP Tools | All `mcp__*` tools auto-approved without interactive prompts |
+| AWS Bedrock Support | `/refresh-bedrock` for enterprise AWS SSO credential refresh |
 
 Toggles available via `/settings` > `claude`.
 
@@ -154,6 +160,21 @@ Example schema:
 ```
 
 When enabled, responses follow `json_schema` output format through the SDK.
+
+## Session Persistence & Auto-Resume
+
+Sessions are persisted to `.bot-data/session-threads.json` and survive bot restarts. On startup, the bot restores all session-to-thread mappings.
+
+**Auto-resume:** Posting a plain text message in a session thread automatically resumes Claude in that session — no need to use `/claude` or `/resume`. Requires the **Message Content Intent** enabled in the Discord Developer Portal.
+
+## Live Status Indicator & Message Filtering
+
+By default, tool use details, system messages, and other verbose output are hidden. Instead, a compact **live status line** shows progress (tool name, elapsed time) and auto-updates as Claude works.
+
+Toggle visibility with:
+- `/show-system` — System init/completion messages
+- `/show-tool-details` — Tool use, results, progress, summaries
+- `/show-thinking` — Claude's internal reasoning
 
 ## Thread-per-Session
 

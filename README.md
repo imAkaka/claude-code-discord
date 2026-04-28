@@ -4,14 +4,17 @@
 
 **Run Claude Code from Discord with full SDK integration, agents, rewind, mid-session controls and more.**
 
-Found a bug or have an idea for improvement? Submit it via [GitHub Issues >⩊<](https://github.com/zebbern/claude-code-discord/issues)
+A private fork of [zebbern/claude-code-discord](https://github.com/zebbern/claude-code-discord) with enhanced features for production use.
 
 <kbd>
 
 | Feature | Details | Status |
 |---------|---------|:------:|
-| Use Claude Code Anywhere | Host locally (VM / Docker / cloud) and send commands via the Discord API | ✅ |
+| Use Claude Code Anywhere | Host locally (VM / cloud) and send commands via the Discord API | ✅ |
 | Thread-per-session | Each `/claude-thread` conversation gets its own Discord thread with custom names | ✅ |
+| Session persistence & auto-resume | Sessions survive restarts; posting in a thread auto-resumes Claude | ✅ |
+| Live status indicator | Compact, auto-updating status line for hidden tool/system messages | ✅ |
+| Message filtering | Toggle visibility of system, tool, and thinking messages per channel | ✅ |
 | Granular sandbox config | Full SDK sandbox with network rules, filesystem ACLs, and excluded commands | ✅ |
 | Local hosting & security | Keep keys and code on your infra while exposing a controlled interface through Discord | ✅ |
 | Centralized collaboration | Run commands and discuss results where your team already communicates | ✅ |
@@ -20,16 +23,15 @@ Found a bug or have an idea for improvement? Submit it via [GitHub Issues >⩊<]
 | MCP server management | View status, toggle, and reconnect MCP servers mid-session | ✅ |
 | Hooks system | Passive SDK callbacks for tool use, notification, and task completion observability | ✅ |
 | Full SDK Integration | Built on `@anthropic-ai/claude-agent-sdk` with native agent support | ✅ |
-| Granular sandbox config | Full SDK sandbox with network rules, filesystem ACLs, and excluded commands | ✅ |
 | AskUserQuestion | Claude can ask clarifying questions mid-session via Discord buttons | ✅ |
+| Auto-allow MCP tools | All `mcp__*` tools auto-approved without interactive prompts | ✅ |
 | Interactive permission prompts | Allow/Deny buttons when Claude wants to use unapproved tools | ✅ |
 | Role-based access control | Restrict destructive commands (`/shell`, `/git`, worktree ops) to specific Discord roles | ✅ |
+| AWS Bedrock support | `/refresh-bedrock` command for enterprise AWS SSO credential refresh | ✅ |
 | Channel monitoring | Watch a channel for bot/webhook messages and auto-investigate in a thread | ✅ |
 | Audit trail & accountability | Channel history provides an easy-to-search record of who ran what and when | ✅ |
 
 </kbd>
-
-<img width="350" height="350" alt="preview" src="https://github.com/user-attachments/assets/e8091420-d271-48a4-8e55-279f2093d3ae" />
 
 </div>
 
@@ -38,13 +40,17 @@ Found a bug or have an idea for improvement? Submit it via [GitHub Issues >⩊<]
 ## Quick Start
 
 ```bash
-git clone https://github.com/zebbern/claude-code-discord.git
+git clone https://github.com/imAkaka/claude-code-discord.git
 cd claude-code-discord
 cp .env.example .env
 # Edit .env with your DISCORD_TOKEN and APPLICATION_ID
-docker compose up -d
-# if not using ANTHROPIC_API_TOKEN:
-docker exec -it claude-code-discord claude /login
+
+# Option A: Production (bare-metal, recommended)
+chmod +x start.sh
+./start.sh start        # runs as daemon, logs in logs/
+
+# Option B: Development
+npx deno task start     # or: npx deno run --allow-all index.ts
 ```
 
 Need a Discord bot token first? See [Discord Bot Setup](docs/setup-discord.md).
@@ -56,12 +62,11 @@ Installment options (`auto setup script` or `manual installation`), see [Install
 | Doc | Description |
 | --- | --- |
 | [Discord Bot Setup](docs/setup-discord.md) | Create a Discord app, get your token and application ID, invite the bot |
-| [Installation](docs/installation.md) | Docker, one-command setup, manual setup, `.env` configuration |
+| [Installation](docs/installation.md) | Setup script, manual setup, `.env` configuration |
 | [Commands](docs/commands.md) | Full reference for all 45+ slash commands |
 | [Features](docs/features.md) | Thinking modes, agents, MCP, rewind, structured output, mid-session controls |
 | [Architecture](docs/architecture.md) | Project structure and SDK integration details |
-| [Docker](docs/docker.md) | Docker Compose, GHCR images, Watchtower auto-updates |
-| [Updating](docs/updating.md) | How to update (Docker pull, git pull, version check) |
+| [Updating](docs/updating.md) | How to update (git pull, version check) |
 
 ## Select Newest Model Available
 
@@ -121,17 +126,22 @@ MONITOR_BOT_IDS=987654321,111111111      # Comma-separated bot/webhook/user IDs 
 ## Startup Options
 
 ```bash
-# Standard start
-deno task start
+# Production daemon (start / stop / restart)
+./start.sh start
+./start.sh stop
+./start.sh restart
+
+# Standard start (uses npx deno — no global deno install required)
+npx deno task start
 
 # Development mode (hot reload)
-deno task dev
+npx deno task dev
 
 # Direct with environment variables
-deno run --allow-all index.ts
+npx deno run --allow-all index.ts
 
 # With optional flags
-deno run --allow-all index.ts --category myproject --user-id YOUR_DISCORD_ID
+npx deno run --allow-all index.ts --category myproject --user-id YOUR_DISCORD_ID
 ```
 
 | Flag | Env Variable | Description |

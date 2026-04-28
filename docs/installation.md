@@ -1,18 +1,24 @@
 # Installation
 
-## Option 1: Docker (Recommended)
+## Option 1: Production Daemon (Recommended)
 
-Works on all platforms with Docker installed.
+Best for VMs, servers, and local machines. No Docker required.
 
 ```bash
-git clone https://github.com/zebbern/claude-code-discord.git
+git clone https://github.com/imAkaka/claude-code-discord.git
 cd claude-code-discord
 cp .env.example .env
 # Edit .env with your DISCORD_TOKEN and APPLICATION_ID
-docker compose up -d
+chmod +x start.sh
+./start.sh start
 ```
 
-See [Docker Guide](docker.md) for full Docker usage, GHCR images, and auto-updates.
+The `start.sh` script manages the bot as a background daemon:
+- `./start.sh start` — Start the bot (logs to `logs/app-<timestamp>.log`)
+- `./start.sh stop` — Stop the bot
+- `./start.sh restart` — Restart the bot
+
+**Prerequisites:** Node.js/npm (for `npx deno`) and Claude CLI (`npm install -g @anthropic-ai/claude-code && claude /login`).
 
 ---
 
@@ -21,7 +27,7 @@ See [Docker Guide](docker.md) for full Docker usage, GHCR images, and auto-updat
 ### Linux / macOS
 
 ```bash
-git clone https://github.com/zebbern/claude-code-discord.git
+git clone https://github.com/imAkaka/claude-code-discord.git
 cd claude-code-discord
 chmod +x setup.sh && ./setup.sh
 ```
@@ -29,7 +35,7 @@ chmod +x setup.sh && ./setup.sh
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/zebbern/claude-code-discord.git
+git clone https://github.com/imAkaka/claude-code-discord.git
 cd claude-code-discord
 .\setup.ps1
 ```
@@ -74,7 +80,7 @@ claude /login
 ### Clone and Configure
 
 ```bash
-git clone https://github.com/zebbern/claude-code-discord.git
+git clone https://github.com/imAkaka/claude-code-discord.git
 cd claude-code-discord
 cp .env.example .env
 ```
@@ -83,28 +89,31 @@ Edit `.env` with your `DISCORD_TOKEN` and `APPLICATION_ID`. See [Configuration](
 
 ### Start the Bot
 
-**Linux / macOS:**
+> **Note:** This project uses `npx deno` to run Deno via npm — no global Deno installation required.
+
+**Production daemon:**
 
 ```bash
-deno task start
+chmod +x start.sh
+./start.sh start
 ```
 
-**Windows (PowerShell):**
+**Standard start:**
 
-```powershell
-deno task start
+```bash
+npx deno task start
 ```
 
 **Development mode (hot reload):**
 
 ```bash
-deno task dev
+npx deno task dev
 ```
 
 **With optional flags:**
 
 ```bash
-deno run --allow-all index.ts --category myproject --user-id YOUR_DISCORD_ID
+npx deno run --allow-all index.ts --category myproject --user-id YOUR_DISCORD_ID
 ```
 
 > If you get `not a git directory`, run `git init` in the project folder first.
@@ -147,8 +156,3 @@ Environment variables override `.env` file settings. CLI flags override environm
 - Use `copy .env.example .env` instead of `cp` if not using Git Bash
 - The setup script (`setup.ps1`) handles Windows-specific paths automatically
 
-### Docker (all platforms)
-
-- Docker Desktop required on Windows/macOS, Docker Engine on Linux
-- The image bundles Deno and Git so no local installs needed
-- See [Docker Guide](docker.md) for volumes, GHCR, and Watchtower

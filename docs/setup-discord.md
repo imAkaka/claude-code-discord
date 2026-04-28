@@ -55,7 +55,11 @@ Then select **all** of the following bot permissions:
 https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&scope=bot+applications.commands&permissions=412317248576
 ```
 
-**Gateway Intents:** Only the **Guilds** intent is used. No privileged intents (Message Content, Members, Presence) required. No toggles needed in the Developer Portal.
+**Gateway Intents:**
+
+- The **Guilds** intent is always required.
+- **Message Content Intent** (privileged) — **Required** if you use channel monitoring (`MONITOR_CHANNEL_ID`) or thread auto-resume (posting plain text in a session thread to continue a conversation). Enable it in the Developer Portal under **Bot > Privileged Gateway Intents > Message Content Intent**.
+- No other privileged intents (Members, Presence) are required.
 
 Copy the generated URL, open it in your browser, select your Discord server, and authorize the bot.
 
