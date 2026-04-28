@@ -304,12 +304,31 @@ ${systemInfoOutput}`;
     async onUptime(ctx: any) {
       try {
         const uptimeOutput = await executeSystemCommand(platformCommands.uptimeCmd);
-        
+
         const uptimeInfo = `System Uptime - ${getPlatformDisplayName()}\n\n${uptimeOutput}`;
         return { data: uptimeInfo };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         throw new Error(`Failed to get uptime: ${message}`);
+      }
+    },
+
+    async onRefreshBedrock(ctx: any) {
+      try {
+        const cmd = new Deno.Command('aws', {
+          args: ['sso', 'login', '--profile', 'enterprise-ai'],
+          stdout: 'piped',
+          stderr: 'piped',
+        });
+        const output = await cmd.output();
+        if (!output.success) {
+          const stderr = new TextDecoder().decode(output.stderr);
+          throw new Error(stderr || 'AWS SSO login failed');
+        }
+        return { data: 'AWS SSO login completed — Bedrock credentials refreshed successfully.' };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to launch SSO login: ${message}`);
       }
     }
   };

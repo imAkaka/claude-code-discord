@@ -111,6 +111,11 @@ export function createSystemCommandHandlers(
       (r) => ({ title: '⏰ System Uptime', data: r.data, color: 0x339933 }),
       'Uptime Error', crashHandler, 'uptime'
     )],
+    ['refresh-bedrock', createDeferredHandler(
+      async () => await systemHandlers.onRefreshBedrock({} as InteractionContext),
+      (r) => ({ title: '🔑 Bedrock Credentials', data: r.data, color: 0xff9900 }),
+      'Bedrock Refresh Error', crashHandler, 'refresh-bedrock'
+    )],
   ]);
 }
 

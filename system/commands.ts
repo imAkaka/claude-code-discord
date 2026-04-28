@@ -74,5 +74,9 @@ export const systemCommands = [
 
   new SlashCommandBuilder()
     .setName('uptime')
-    .setDescription('Show system uptime and load averages')
+    .setDescription('Show system uptime and load averages'),
+
+  new SlashCommandBuilder()
+    .setName('refresh-bedrock')
+    .setDescription('Refresh AWS Bedrock credentials via SSO login'),
 ];
