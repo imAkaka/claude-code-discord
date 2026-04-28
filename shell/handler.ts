@@ -24,29 +24,11 @@ export class ShellManager {
     // Cross-platform command handling
     let modifiedCommand = command;
     
-    if (this.platform === 'windows') {
-      // Handle Windows-specific command modifications
-      if (command.trim().startsWith('python3')) {
-        // On Windows, python3 is often just 'python'
-        modifiedCommand = command.replace(/^python3/, 'python');
-        if (!modifiedCommand.includes('-u')) {
-          modifiedCommand = modifiedCommand.replace(/^python\s*/, 'python -u ');
-        }
-      }
-      // Handle other Windows-specific cases
-      if (command.includes('ls ')) {
-        modifiedCommand = command.replace(/\bls\b/g, 'dir');
-      }
-      if (command.includes('cat ')) {
-        modifiedCommand = command.replace(/\bcat\b/g, 'type');
-      }
-    } else {
-      // Handle Python3 buffering issues by adding -u flag for unbuffered output (Unix-like systems)
-      if (command.trim().startsWith('python3') && !command.includes('-u')) {
-        modifiedCommand = command.replace(/^python3\s*/, 'python3 -u ');
-      } else if (command.trim() === 'python3') {
-        modifiedCommand = 'python3 -u';
-      }
+    // Handle Python3 buffering issues by adding -u flag for unbuffered output
+    if (command.trim().startsWith('python3') && !command.includes('-u')) {
+      modifiedCommand = command.replace(/^python3\s*/, 'python3 -u ');
+    } else if (command.trim() === 'python3') {
+      modifiedCommand = 'python3 -u';
     }
 
     // Get platform-appropriate shell command

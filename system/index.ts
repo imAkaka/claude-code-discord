@@ -1,11 +1,10 @@
-import { 
-  detectPlatform, 
-  getPlatformCommands, 
-  executeSystemCommand, 
+import {
+  detectPlatform,
+  getPlatformCommands,
+  executeSystemCommand,
   getPlatformDisplayName,
   parseProcessList,
-  formatFileSize,
-  isCommandAvailable 
+  isCommandAvailable
 } from "../util/platform.ts";
 
 // Re-export system commands from commands.ts
@@ -48,24 +47,17 @@ ${systemInfoOutput}`;
     async onProcesses(ctx: any, filter?: string, limit: number = 20) {
       try {
         let command = platformCommands.processListCmd;
-        
+
         // Apply filter if provided
-        if (filter && platform !== 'windows') {
+        if (filter) {
           command = platformCommands.findProcessCmd(filter);
         }
-        
+
         const output = await executeSystemCommand(command);
-        
-        // Parse process list based on platform
+
+        // Parse process list
         const processes = parseProcessList(output);
-        
-        // Apply filter for Windows (post-processing)
-        let filteredProcesses = processes;
-        if (filter) {
-          filteredProcesses = processes.filter(p => 
-            p.name.toLowerCase().includes(filter.toLowerCase())
-          );
-        }
+        const filteredProcesses = processes;
         
         // Apply limit
         const limitedProcesses = filteredProcesses.slice(0, limit);
@@ -73,21 +65,12 @@ ${systemInfoOutput}`;
         let processInfo = `Running Processes (${limitedProcesses.length}/${filteredProcesses.length} shown):\n`;
         processInfo += `Platform: ${getPlatformDisplayName()}\n\n`;
         
-        if (platform === 'windows') {
-          processInfo += `${'Name'.padEnd(20)} ${'PID'.padEnd(8)} ${'CPU%'.padEnd(8)} ${'Memory'.padEnd(12)}\n`;
-          processInfo += '-'.repeat(50) + '\n';
-          
-          limitedProcesses.forEach(proc => {
-            processInfo += `${proc.name.padEnd(20)} ${proc.pid.toString().padEnd(8)} ${(proc.cpu || 0).toFixed(1).padEnd(8)} ${formatFileSize(proc.memory || 0).padEnd(12)}\n`;
-          });
-        } else {
-          processInfo += `${'PID'.padEnd(8)} ${'Name'.padEnd(20)} ${'CPU%'.padEnd(8)} ${'MEM%'.padEnd(8)} ${'Status'.padEnd(10)}\n`;
-          processInfo += '-'.repeat(60) + '\n';
-          
-          limitedProcesses.forEach(proc => {
-            processInfo += `${proc.pid.toString().padEnd(8)} ${proc.name.padEnd(20)} ${(proc.cpu || 0).toFixed(1).padEnd(8)} ${(proc.memory || 0).toFixed(1).padEnd(8)} ${(proc.status || 'Unknown').padEnd(10)}\n`;
-          });
-        }
+        processInfo += `${'PID'.padEnd(8)} ${'Name'.padEnd(20)} ${'CPU%'.padEnd(8)} ${'MEM%'.padEnd(8)} ${'Status'.padEnd(10)}\n`;
+        processInfo += '-'.repeat(60) + '\n';
+
+        limitedProcesses.forEach(proc => {
+          processInfo += `${proc.pid.toString().padEnd(8)} ${proc.name.padEnd(20)} ${(proc.cpu || 0).toFixed(1).padEnd(8)} ${(proc.memory || 0).toFixed(1).padEnd(8)} ${(proc.status || 'Unknown').padEnd(10)}\n`;
+        });
 
         return { data: processInfo };
       } catch (error) {
@@ -100,32 +83,17 @@ ${systemInfoOutput}`;
       try {
         let resourceInfo = `System Resources - ${getPlatformDisplayName()}\n\n`;
         
-        if (platform === 'windows') {
-          // Windows resource monitoring
-          const memoryCmd = ['powershell', '-Command', 'Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory'];
-          const cpuCmd = ['powershell', '-Command', 'Get-Counter "\\Processor(_Total)\\% Processor Time" | Select-Object -ExpandProperty CounterSamples | Select-Object CookedValue'];
-          
-          const [memoryOutput, cpuOutput] = await Promise.all([
-            executeSystemCommand(memoryCmd),
-            executeSystemCommand(cpuCmd)
-          ]);
-          
-          resourceInfo += `Memory Information:\n${memoryOutput}\n\n`;
-          resourceInfo += `CPU Usage:\n${cpuOutput}\n`;
-        } else {
-          // Unix-like systems
-          const commands = [
-            ['free', '-h'],
-            ['cat', '/proc/loadavg'],
-            ['cat', '/proc/meminfo']
-          ];
-          
-          for (const cmd of commands) {
-            const available = await isCommandAvailable(cmd[0]);
-            if (available) {
-              const output = await executeSystemCommand(cmd);
-              resourceInfo += `${cmd.join(' ')}:\n${output}\n\n`;
-            }
+        const commands = [
+          ['free', '-h'],
+          ['cat', '/proc/loadavg'],
+          ['cat', '/proc/meminfo']
+        ];
+
+        for (const cmd of commands) {
+          const available = await isCommandAvailable(cmd[0]);
+          if (available) {
+            const output = await executeSystemCommand(cmd);
+            resourceInfo += `${cmd.join(' ')}:\n${output}\n\n`;
           }
         }
 
@@ -142,17 +110,13 @@ ${systemInfoOutput}`;
         
         let networkInfo = `Network Information - ${getPlatformDisplayName()}\n\n`;
         
-        if (platform === 'windows') {
-          networkInfo += `Network Adapters:\n${networkOutput}`;
-        } else {
-          networkInfo += `Network Interfaces:\n${networkOutput}`;
-          
-          // Try to get additional connection info on Unix systems
-          const netstatAvailable = await isCommandAvailable('netstat');
-          if (netstatAvailable) {
-            const connectionsOutput = await executeSystemCommand(['netstat', '-tuln']);
-            networkInfo += `\n\nActive Connections:\n${connectionsOutput}`;
-          }
+        networkInfo += `Network Interfaces:\n${networkOutput}`;
+
+        // Try to get additional connection info
+        const netstatAvailable = await isCommandAvailable('netstat');
+        if (netstatAvailable) {
+          const connectionsOutput = await executeSystemCommand(['netstat', '-tuln']);
+          networkInfo += `\n\nActive Connections:\n${connectionsOutput}`;
         }
 
         return { data: networkInfo };
@@ -212,27 +176,19 @@ ${systemInfoOutput}`;
       try {
         let command = platformCommands.systemLogsCmd;
         
-        if (platform === 'windows') {
-          if (service) {
-            command = ['powershell', '-Command', `Get-EventLog -LogName System -Source "*${service}*" -Newest ${lines} | Select-Object TimeGenerated, Source, EntryType, Message | Format-Table -AutoSize`];
+        if (service) {
+          const journalAvailable = await isCommandAvailable('journalctl');
+          if (journalAvailable) {
+            command = ['journalctl', '-u', service, '-n', lines.toString(), '--no-pager'];
           } else {
-            command = ['powershell', '-Command', `Get-EventLog -LogName System -Newest ${lines} | Select-Object TimeGenerated, Source, EntryType, Message | Format-Table -AutoSize`];
+            command = ['dmesg', '|', 'grep', service, '|', 'tail', `-${lines}`];
           }
         } else {
-          if (service) {
-            const journalAvailable = await isCommandAvailable('journalctl');
-            if (journalAvailable) {
-              command = ['journalctl', '-u', service, '-n', lines.toString(), '--no-pager'];
-            } else {
-              command = ['dmesg', '|', 'grep', service, '|', 'tail', `-${lines}`];
-            }
+          const journalAvailable = await isCommandAvailable('journalctl');
+          if (journalAvailable) {
+            command = ['journalctl', '-n', lines.toString(), '--no-pager'];
           } else {
-            const journalAvailable = await isCommandAvailable('journalctl');
-            if (journalAvailable) {
-              command = ['journalctl', '-n', lines.toString(), '--no-pager'];
-            } else {
-              command = ['dmesg', '|', 'tail', `-${lines}`];
-            }
+            command = ['dmesg', '|', 'tail', `-${lines}`];
           }
         }
         
@@ -253,19 +209,12 @@ ${systemInfoOutput}`;
       try {
         let portInfo = `Port Scan - ${host} (${getPlatformDisplayName()})\n\n`;
         
-        if (platform === 'windows') {
-          // Windows netstat approach
-          const command = ['netstat', '-an'];
-          const output = await executeSystemCommand(command);
-          portInfo += `Active Connections:\n${output}`;
-        } else {
-          // Unix approach - try ss first, fallback to netstat
-          const ssAvailable = await isCommandAvailable('ss');
-          const command = ssAvailable ? ['ss', '-tuln'] : ['netstat', '-tuln'];
-          
-          const output = await executeSystemCommand(command);
-          portInfo += `Listening Ports:\n${output}`;
-        }
+        // Try ss first, fallback to netstat
+        const ssAvailable = await isCommandAvailable('ss');
+        const command = ssAvailable ? ['ss', '-tuln'] : ['netstat', '-tuln'];
+
+        const output = await executeSystemCommand(command);
+        portInfo += `Listening Ports:\n${output}`;
 
         return { data: portInfo };
       } catch (error) {
@@ -279,9 +228,7 @@ ${systemInfoOutput}`;
         let command = platformCommands.serviceStatusCmd;
         
         if (service) {
-          if (platform === 'windows') {
-            command = ['powershell', '-Command', `Get-Service -Name "*${service}*" | Format-Table -AutoSize`];
-          } else if (platform === 'darwin') {
+          if (platform === 'darwin') {
             command = ['launchctl', 'list', '|', 'grep', service];
           } else {
             command = ['systemctl', 'status', service, '--no-pager'];

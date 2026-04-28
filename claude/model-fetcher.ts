@@ -220,10 +220,7 @@ async function parseModelsFromCLI(): Promise<string[] | null> {
     const possiblePaths: string[] = [];
     
     for (const pkg of packageNames) {
-      // npm global (Windows)
-      const appData = Deno.env.get("APPDATA");
-      if (appData) possiblePaths.push(`${appData}/npm/node_modules/${pkg}/cli.js`);
-      // npm global (Unix)
+      // npm global
       possiblePaths.push(`/usr/local/lib/node_modules/${pkg}/cli.js`);
       possiblePaths.push(`/usr/lib/node_modules/${pkg}/cli.js`);
       // User-specific npm (Unix)
@@ -247,8 +244,7 @@ async function parseModelsFromCLI(): Promise<string[] | null> {
     // Also try locating via `which claude` / `where claude`
     if (!cliContent) {
       try {
-        const isWindows = Deno.build.os === 'windows';
-        const whichCmd = isWindows ? 'where' : 'which';
+        const whichCmd = 'which';
         const cmd = new Deno.Command(whichCmd, {
           args: ['claude'],
           stdout: 'piped',
@@ -260,7 +256,7 @@ async function parseModelsFromCLI(): Promise<string[] | null> {
         if (claudePath) {
           // Claude is a JS script — the actual CLI is in the same package
           // Resolve to the package's cli.js (check both old and new package names)
-          const basePath = claudePath.replace(/[/\\]claude(\.cmd|\.ps1)?$/i, '');
+          const basePath = claudePath.replace(/\/claude$/i, '');
           const possibleCliJsPaths = [
             `${basePath}/node_modules/@anthropic-ai/claude-code/cli.js`,
             `${basePath}/node_modules/@anthropic-ai/claude-agent-sdk/cli.js`,

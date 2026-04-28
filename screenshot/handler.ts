@@ -1,6 +1,6 @@
 /**
  * Screenshot handler for capturing the host machine's screen
- * Only works in non-Docker, non-headless environments
+ * Only works in non-headless environments (macOS/Linux with GUI)
  */
 
 import { exec as execCallback } from "node:child_process";
@@ -12,45 +12,10 @@ import type { ScreenshotResult, ScreenshotEnvironment } from "./types.ts";
 const exec = promisify(execCallback);
 
 /**
- * Check if running in Docker
- */
-async function isDockerEnvironment(): Promise<boolean> {
-  // Check environment variable (set in our Dockerfile)
-  if (Deno.env.get("DOCKER_CONTAINER") === "true") {
-    return true;
-  }
-  
-  // Check for .dockerenv file
-  try {
-    await Deno.stat("/.dockerenv");
-    return true;
-  } catch {
-    // Not in Docker
-  }
-  
-  // Check for docker in cgroup
-  try {
-    const cgroup = await Deno.readTextFile("/proc/1/cgroup");
-    if (cgroup.includes("docker")) {
-      return true;
-    }
-  } catch {
-    // Not Linux or can't read cgroup
-  }
-  
-  return false;
-}
-
-/**
  * Check if a display is available
  */
 function hasDisplay(): boolean {
   const os = Deno.build.os;
-  
-  // Windows always has a display if running interactively
-  if (os === "windows") {
-    return true;
-  }
   
   // macOS - check if running in a GUI session
   if (os === "darwin") {
@@ -66,23 +31,19 @@ function hasDisplay(): boolean {
  * Get screenshot environment information
  */
 export async function getScreenshotEnvironment(): Promise<ScreenshotEnvironment> {
-  const isDocker = await isDockerEnvironment();
   const display = hasDisplay();
   const platform = Deno.build.os;
-  
+
   let canCapture = true;
   let reason: string | undefined;
-  
-  if (isDocker) {
-    canCapture = false;
-    reason = "Screenshot is not available in Docker containers";
-  } else if (!display) {
+
+  if (!display) {
     canCapture = false;
     reason = "No display available (headless environment)";
   }
-  
+
   return {
-    isDocker,
+    isDocker: false,
     hasDisplay: display,
     platform,
     canCapture,
@@ -109,76 +70,6 @@ export async function captureScreenshot(outputDir: string = Deno.cwd()): Promise
   
   try {
     switch (env.platform) {
-      case "windows": {
-        // Create a temporary PowerShell script file
-        const scriptPath = join(outputDir, `capture-${timestamp}.ps1`);
-        const escapedFilePath = filePath.replace(/\\/g, "\\\\");
-        
-        // Use GetDeviceCaps to get actual screen resolution (ignoring DPI scaling)
-        const psScript = `
-Add-Type -AssemblyName System.Windows.Forms,System.Drawing
-
-# Enable DPI awareness for accurate screen capture
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-
-public class ScreenCapture {
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetDC(IntPtr hWnd);
-    
-    [DllImport("gdi32.dll")]
-    public static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
-    
-    [DllImport("user32.dll")]
-    public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
-    
-    public const int DESKTOPHORZRES = 118;
-    public const int DESKTOPVERTRES = 117;
-    
-    public static int[] GetScreenResolution() {
-        IntPtr hdc = GetDC(IntPtr.Zero);
-        int width = GetDeviceCaps(hdc, DESKTOPHORZRES);
-        int height = GetDeviceCaps(hdc, DESKTOPVERTRES);
-        ReleaseDC(IntPtr.Zero, hdc);
-        return new int[] { width, height };
-    }
-}
-"@
-
-try {
-    # Get actual screen resolution (not scaled)
-    $resolution = [ScreenCapture]::GetScreenResolution()
-    $width = $resolution[0]
-    $height = $resolution[1]
-    
-    # Create bitmap at actual resolution
-    $bitmap = New-Object System.Drawing.Bitmap($width, $height)
-    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-    $graphics.CopyFromScreen(0, 0, 0, 0, [System.Drawing.Size]::new($width, $height))
-    $bitmap.Save("${escapedFilePath}")
-    $graphics.Dispose()
-    $bitmap.Dispose()
-    exit 0
-} catch {
-    Write-Error $_.Exception.Message
-    exit 1
-}
-`.trim();
-        
-        // Write script to file
-        await Deno.writeTextFile(scriptPath, psScript);
-        
-        try {
-          // Execute script
-          await exec(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`);
-        } finally {
-          // Clean up script file
-          try { await Deno.remove(scriptPath); } catch { /* ignore */ }
-        }
-        break;
-      }
-      
       case "darwin": {
         // macOS screencapture
         await exec(`screencapture -x "${filePath}"`);

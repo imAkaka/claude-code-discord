@@ -95,12 +95,6 @@ This document tracks issues identified during a comprehensive code audit that we
 
 **Why it doesn't matter:** If you type an invalid model name, the Anthropic API returns an error. You get the same outcome (failure + error message) whether validation happens client-side or server-side. The API is the authoritative validator.
 
-### `getEnvVarPattern` Identical on Both Platforms (Audit #26)
-
-**What:** The Windows and Unix branches of `getEnvVarPattern` return the same regex.
-
-**Why it doesn't matter:** It works correctly on both platforms. The code is just redundant, not buggy.
-
 ---
 
 ## Fragile but Functional

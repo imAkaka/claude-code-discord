@@ -1,7 +1,7 @@
 /**
  * Signal handler for graceful shutdown of the Discord bot.
- * Handles SIGINT (Ctrl+C), SIGTERM, and SIGBREAK (Windows) signals.
- * 
+ * Handles SIGINT (Ctrl+C) and SIGTERM signals.
+ *
  * @module core/signal-handler
  */
 
@@ -24,7 +24,7 @@ export interface CleanupContext {
 /**
  * Signal types that can trigger shutdown.
  */
-export type ShutdownSignal = 'SIGINT' | 'SIGTERM' | 'SIGBREAK';
+export type ShutdownSignal = 'SIGINT' | 'SIGTERM';
 
 /**
  * Configuration for signal handler setup.
@@ -93,16 +93,6 @@ export function createShutdownHandler(
 }
 
 /**
- * Get the current operating system platform.
- * Abstracted for testability.
- * 
- * @returns Platform identifier ('windows', 'darwin', 'linux', etc.)
- */
-export function getPlatform(): typeof Deno.build.os {
-  return Deno.build.os;
-}
-
-/**
  * Register a signal listener with error handling.
  * 
  * @param signal - Signal to listen for
@@ -123,48 +113,25 @@ function tryRegisterSignal(
 }
 
 /**
- * Setup cross-platform signal handlers for graceful shutdown.
- * 
- * Registers appropriate signal handlers based on the operating system:
- * - **All platforms**: SIGINT (Ctrl+C)
- * - **Windows**: SIGBREAK (Ctrl+Break)
- * - **Unix/Linux/macOS**: SIGTERM
- * 
- * @param ctx - Cleanup context with necessary callbacks
- * @param config - Optional configuration for handler behavior
- * @returns Result indicating which signals were registered successfully
- * 
- * @example
- * ```typescript
- * const result = setupSignalHandlers({
- *   killAllShellProcesses: () => shellManager.killAll(),
- *   killAllWorktreeBots: () => worktreeManager.killAll(),
- *   getClaudeController: () => claudeController,
- *   sendShutdownNotification: async (signal) => {
- *     await sender([{ type: 'system', content: '', metadata: { subtype: 'shutdown', signal } }]);
- *   },
- *   destroyClient: () => client.destroy(),
- * });
- * 
- * console.log('Registered signals:', result.registeredSignals);
- * ```
+ * Setup signal handlers for graceful shutdown.
+ *
+ * Registers SIGINT (Ctrl+C) and SIGTERM handlers.
  */
 export function setupSignalHandlers(
   ctx: CleanupContext,
   config: SignalHandlerConfig = {}
 ): SignalHandlerResult {
   const { verbose = true } = config;
-  const platform = getPlatform();
-  
+
   const result: SignalHandlerResult = {
     registeredSignals: [],
     failedSignals: [],
   };
-  
+
   // Create the shutdown handler
   const handleSignal = createShutdownHandler(ctx, config);
-  
-  // SIGINT (Ctrl+C) - works on all platforms
+
+  // SIGINT (Ctrl+C)
   const sigintResult = tryRegisterSignal('SIGINT', () => handleSignal('SIGINT'));
   if (sigintResult.success) {
     result.registeredSignals.push('SIGINT');
@@ -174,32 +141,18 @@ export function setupSignalHandlers(
       console.warn('Could not register SIGINT handler:', sigintResult.error);
     }
   }
-  
-  // Platform-specific signals
-  if (platform === 'windows') {
-    // Windows-specific: SIGBREAK (Ctrl+Break)
-    const sigbreakResult = tryRegisterSignal('SIGBREAK', () => handleSignal('SIGBREAK'));
-    if (sigbreakResult.success) {
-      result.registeredSignals.push('SIGBREAK');
-    } else {
-      result.failedSignals.push({ signal: 'SIGBREAK', error: sigbreakResult.error });
-      if (verbose) {
-        console.warn('Could not register SIGBREAK handler:', sigbreakResult.error);
-      }
-    }
+
+  // SIGTERM
+  const sigtermResult = tryRegisterSignal('SIGTERM', () => handleSignal('SIGTERM'));
+  if (sigtermResult.success) {
+    result.registeredSignals.push('SIGTERM');
   } else {
-    // Unix-like systems: SIGTERM
-    const sigtermResult = tryRegisterSignal('SIGTERM', () => handleSignal('SIGTERM'));
-    if (sigtermResult.success) {
-      result.registeredSignals.push('SIGTERM');
-    } else {
-      result.failedSignals.push({ signal: 'SIGTERM', error: sigtermResult.error });
-      if (verbose) {
-        console.warn('Could not register SIGTERM handler:', sigtermResult.error);
-      }
+    result.failedSignals.push({ signal: 'SIGTERM', error: sigtermResult.error });
+    if (verbose) {
+      console.warn('Could not register SIGTERM handler:', sigtermResult.error);
     }
   }
-  
+
   return result;
 }
 

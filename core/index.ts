@@ -45,7 +45,6 @@ export {
   createShutdownHandler,
   setupSignalHandlers,
   removeSignalHandlers,
-  getPlatform,
 } from "./signal-handler.ts";
 
 // Bot factory

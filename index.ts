@@ -847,20 +847,11 @@ function setupSignalHandlers(ctx: {
   try {
     Deno.addSignalListener("SIGINT", () => handleSignal("SIGINT"));
 
-    if (platform === "windows") {
-      try {
-        Deno.addSignalListener("SIGBREAK", () => handleSignal("SIGBREAK"));
-      } catch (winError) {
-        const message = winError instanceof Error ? winError.message : String(winError);
-        console.warn('Could not register SIGBREAK handler:', message);
-      }
-    } else {
-      try {
-        Deno.addSignalListener("SIGTERM", () => handleSignal("SIGTERM"));
-      } catch (unixError) {
-        const message = unixError instanceof Error ? unixError.message : String(unixError);
-        console.warn('Could not register SIGTERM handler:', message);
-      }
+    try {
+      Deno.addSignalListener("SIGTERM", () => handleSignal("SIGTERM"));
+    } catch (unixError) {
+      const message = unixError instanceof Error ? unixError.message : String(unixError);
+      console.warn('Could not register SIGTERM handler:', message);
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -944,7 +935,7 @@ if (import.meta.main) {
       console.error("║  Options:                                                 ║");
       console.error("║  1. Create a .env file with these variables               ║");
       console.error("║  2. Set environment variables before running              ║");
-      console.error("║  3. Run setup script: ./setup.sh or .\\setup.ps1          ║");
+      console.error("║  3. Run setup script: ./setup.sh                          ║");
       console.error("╚═══════════════════════════════════════════════════════════╝");
       Deno.exit(1);
     }

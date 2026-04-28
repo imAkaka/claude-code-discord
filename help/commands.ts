@@ -576,11 +576,11 @@ export const COMMAND_HELP = {
       { name: "delay", description: "Delay in seconds before capture (0-10)", required: false }
     ],
     notes: [
-      "Only works when bot runs locally (not in Docker)",
+      "Only works when bot runs locally with a display",
       "Captures the entire screen of the host machine",
       "Useful for seeing what Claude is working on",
       "Not available in headless environments",
-      "Supports Windows, macOS, and Linux with GUI"
+      "Supports macOS and Linux with GUI"
     ]
   },
   "claude-explain": {

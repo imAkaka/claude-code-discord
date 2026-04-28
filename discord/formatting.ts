@@ -103,8 +103,6 @@ export function formatFileContent(
     'sh': { lang: 'bash', type: 'Shell Script' },
     'bash': { lang: 'bash', type: 'Bash Script' },
     'zsh': { lang: 'zsh', type: 'Zsh Script' },
-    'ps1': { lang: 'powershell', type: 'PowerShell' },
-    'bat': { lang: 'batch', type: 'Batch Script' },
     'sql': { lang: 'sql', type: 'SQL' },
     'dockerfile': { lang: 'dockerfile', type: 'Dockerfile' },
     'gitignore': { lang: 'gitignore', type: 'Git Ignore' }

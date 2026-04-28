@@ -24,20 +24,10 @@ The `start.sh` script manages the bot as a background daemon:
 
 ## Option 2: Setup Script
 
-### Linux / macOS
-
 ```bash
 git clone https://github.com/imAkaka/claude-code-discord.git
 cd claude-code-discord
 chmod +x setup.sh && ./setup.sh
-```
-
-### Windows (PowerShell)
-
-```powershell
-git clone https://github.com/imAkaka/claude-code-discord.git
-cd claude-code-discord
-.\setup.ps1
 ```
 
 The setup script handles:
@@ -54,16 +44,8 @@ The setup script handles:
 
 ### Install Deno
 
-**Linux / macOS:**
-
 ```bash
 curl -fsSL https://deno.land/install.sh | sh
-```
-
-**Windows (PowerShell):**
-
-```powershell
-irm https://deno.land/install.ps1 | iex
 ```
 
 Or download from [deno.com](https://deno.com/).
@@ -144,15 +126,7 @@ Environment variables override `.env` file settings. CLI flags override environm
 
 ## Platform Notes
 
-### Linux / macOS
-
+- Supported platforms: **Linux** and **macOS**
 - Deno and Claude CLI install via shell one-liners
 - Use `chmod +x setup.sh` before running the setup script
-- `cp` works natively for `.env.example`
-
-### Windows
-
-- Run PowerShell as Administrator if Deno install requires it
-- Use `copy .env.example .env` instead of `cp` if not using Git Bash
-- The setup script (`setup.ps1`) handles Windows-specific paths automatically
 

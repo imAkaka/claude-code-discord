@@ -1964,9 +1964,7 @@ async function testMCPConnection(ctx: any, workDir: string, serverName: string) 
         : `\`${server.command}\` command failed`;
     } else {
       // For other commands, check if they exist in PATH
-      // Use 'where' on Windows, 'which' on Unix-like systems
-      const isWindows = Deno.build.os === 'windows';
-      const whichCmd = isWindows ? 'where' : 'which';
+      const whichCmd = 'which';
       const cmd = new Deno.Command(whichCmd, {
         args: [server.command],
         stdout: 'piped',
