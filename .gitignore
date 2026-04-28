@@ -6,6 +6,7 @@
 # Claude session data (ignore all except mcp.json)
 .claude/
 !.claude/mcp.json
+!.claude/skills/
 
 # Playwright MCP data
 .playwright-mcp/

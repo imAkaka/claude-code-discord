@@ -935,7 +935,7 @@ if (import.meta.main) {
       console.error("║  Options:                                                 ║");
       console.error("║  1. Create a .env file with these variables               ║");
       console.error("║  2. Set environment variables before running              ║");
-      console.error("║  3. Run setup script: ./setup.sh                          ║");
+      console.error("║  3. Run /discord-bot-setup in Claude Code                  ║");
       console.error("╚═══════════════════════════════════════════════════════════╝");
       Deno.exit(1);
     }

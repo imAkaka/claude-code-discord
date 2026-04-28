@@ -42,27 +42,18 @@ A private fork of [zebbern/claude-code-discord](https://github.com/zebbern/claud
 ```bash
 git clone https://github.com/imAkaka/claude-code-discord.git
 cd claude-code-discord
-cp .env.example .env
-# Edit .env with your DISCORD_TOKEN and APPLICATION_ID
-
-# Option A: Production (bare-metal, recommended)
-chmod +x start.sh
-./start.sh start        # runs as daemon, logs in logs/
-
-# Option B: Development
-npx deno task start     # or: npx deno run --allow-all index.ts
+claude   # launch Claude Code, then run /discord-bot-setup
 ```
 
-Need a Discord bot token first? See [Discord Bot Setup](docs/setup-discord.md).
+The `/discord-bot-setup` skill will guide you through prerequisites, `.env` configuration, Discord bot creation, authentication (AWS Bedrock or Anthropic API), and starting the bot.
 
-Installment options (`auto setup script` or `manual installation`), see [Installation Guide](docs/installation.md).
+If you insist on doing everything by hand in 2026, the skill source is right there at [`.claude/skills/discord-bot-setup.md`](.claude/skills/discord-bot-setup.md) — good luck.
 
 ## Documentation
 
 | Doc | Description |
 | --- | --- |
 | [Discord Bot Setup](docs/setup-discord.md) | Create a Discord app, get your token and application ID, invite the bot |
-| [Installation](docs/installation.md) | Setup script, manual setup, `.env` configuration |
 | [Commands](docs/commands.md) | Full reference for all 45+ slash commands |
 | [Features](docs/features.md) | Thinking modes, agents, MCP, rewind, structured output, mid-session controls |
 | [Architecture](docs/architecture.md) | Project structure and SDK integration details |
