@@ -37,23 +37,18 @@ claude-code-discord/
 │
 ├── docs/                       # Documentation
 │   ├── setup-discord.md        # Discord bot setup tutorial
-│   ├── installation.md         # Installation guide
 │   ├── commands.md             # Command reference
 │   ├── features.md             # Feature details
 │   ├── architecture.md         # This file
-│   ├── docker.md               # Docker guide
 │   └── updating.md             # Update instructions
 │
-├── Dockerfile                  # Container: Deno + Node.js + Claude CLI
-├── docker-compose.yml          # Docker Compose configuration
-└── .github/
-    └── workflows/
-        └── docker-publish.yml  # GHCR image publishing
+├── start.sh                    # Production daemon (start/stop/restart)
+└── CLAUDE.md                   # Project instructions for Claude Code
 ```
 
 ## SDK Integration
 
-Built on `@anthropic-ai/claude-agent-sdk` v0.2.45.
+Built on `@anthropic-ai/claude-agent-sdk`.
 
 ### Data Flow
 
