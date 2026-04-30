@@ -14,6 +14,13 @@ do_start() {
 
   LOG_FILE="$LOG_DIR/app-$(date +%Y%m%d-%H%M%S).log"
   cd "$SCRIPT_DIR"
+
+  # Load .env file into environment (Deno doesn't auto-load .env)
+  if [ -f .env ]; then
+    export $(grep -v '^#' .env | grep -v '^$' | xargs)
+    echo "Loaded .env file"
+  fi
+
   nohup npx deno run --allow-all index.ts > "$LOG_FILE" 2>&1 &
 
   PID=$!
