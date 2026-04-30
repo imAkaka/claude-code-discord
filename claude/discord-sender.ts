@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { splitText } from "../discord/utils.ts";
 import type { ClaudeMessage } from "./types.ts";
 import type { MessageContent, EmbedData, ComponentData } from "../discord/types.ts";
@@ -233,8 +234,25 @@ export function createClaudeSender(sender: DiscordSender, options?: { isThread?:
     switch (msg.type) {
       case 'text': {
         const chunks = splitText(msg.content, 2000);
+        
+        // Auto-detect local file paths in text messages and attach them
+        const filePaths = msg.content.match(/(?:\/[\w.~-]+)*\/[\w-]+\.(?:png|jpg|jpeg|gif|webp|pdf|zip|csv)/gi) || [];
+        const filesToAttach: { path: string; name: string }[] = [];
+        for (const p of filePaths) {
+          const cleanPath = p.replace(/[`()\"']/g, '');
+          if (existsSync(cleanPath)) {
+            filesToAttach.push({ path: cleanPath, name: cleanPath.split('/').pop() || 'attachment' });
+            console.log(`[Auto-Upload from text] Detected: ${cleanPath}`);
+          }
+        }
+
         for (const chunk of chunks) {
           await sender.sendMessage({ content: chunk });
+        }
+        
+        // Send files as separate messages after the text (so they appear as actual images, not links)
+        for (const file of filesToAttach) {
+          await sender.sendMessage({ files: [file] });
         }
         break;
       }
@@ -359,6 +377,17 @@ export function createClaudeSender(sender: DiscordSender, options?: { isThread?:
           break;
         }
         
+        // [NEW] Auto-detect local file paths in tool results and attach them to Discord
+        const filePaths = cleanContent.match(/(?:\/[\w.~-]+)*\/[\w-]+\.(?:png|jpg|jpeg|gif|webp|pdf|zip|csv)/gi) || [];
+        const filesToAttach: { path: string; name: string }[] = [];
+        for (const p of filePaths) {
+          const cleanPath = p.replace(/[`()"']/g, '');
+          if (existsSync(cleanPath)) {
+            filesToAttach.push({ path: cleanPath, name: cleanPath.split('/').pop() || 'attachment' });
+            console.log(`[Auto-Upload] Detected: ${cleanPath}`);
+          }
+        }
+
         const { preview, isTruncated, totalLines } = truncateContent(cleanContent);
         
         const messageContent: MessageContent = {
@@ -367,7 +396,8 @@ export function createClaudeSender(sender: DiscordSender, options?: { isThread?:
             title: `✅ Tool Result${isTruncated ? ` (+${totalLines - 15} more lines)` : ''}`,
             description: `\`\`\`\n${preview}\n\`\`\``,
             timestamp: true
-          }]
+          }],
+          files: filesToAttach.length > 0 ? filesToAttach : undefined
         };
         
         // Add expand button if content was truncated
