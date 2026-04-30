@@ -484,7 +484,7 @@ export async function createClaudeCodeBot(config: BotConfig) {
  */
 // deno-lint-ignore no-explicit-any
 async function sendMessageContent(channel: any, content: MessageContent): Promise<void> {
-  const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import("npm:discord.js@14.14.1");
+  const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = await import("npm:discord.js@14.14.1");
 
   // deno-lint-ignore no-explicit-any
   const payload: any = {};
@@ -527,15 +527,24 @@ async function sendMessageContent(channel: any, content: MessageContent): Promis
     });
   }
 
+  // Handle file attachments
+  if (content.files && content.files.length > 0) {
+    payload.files = content.files.map(f => new AttachmentBuilder(f.path, { name: f.name || 'attachment', description: f.description }));
+  }
+
   await channel.send(payload);
 }
 
 /** Like sendMessageContent but returns the Message object for later editing/deleting. */
 // deno-lint-ignore no-explicit-any
 async function sendMessageContentTracked(channel: any, content: MessageContent): Promise<any> {
+  const { AttachmentBuilder } = await import("npm:discord.js@14.14.1");
   // deno-lint-ignore no-explicit-any
   const payload: any = {};
   if (content.content) payload.content = content.content;
+  if (content.files && content.files.length > 0) {
+    payload.files = content.files.map(f => new AttachmentBuilder(f.path, { name: f.name || 'attachment', description: f.description }));
+  }
   return await channel.send(payload);
 }
 
