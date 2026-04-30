@@ -272,6 +272,12 @@ export async function createDiscordBot(
       return;
     }
 
+    // [Multi-channel] Redirect Claude output to the invoking channel
+    if (Deno.env.get("ALLOW_ANY_CHANNEL") === "true" && dependencies.setResponseChannel) {
+      const channel = client.channels.cache.get(interaction.channelId) || interaction.channel;
+      dependencies.setResponseChannel(channel);
+    }
+
     const ctx = createInteractionContext(interaction);
 
     // RBAC check for restricted commands

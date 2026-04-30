@@ -374,6 +374,8 @@ export async function createClaudeCodeBot(config: BotConfig) {
         try { await thinkingMsg.delete(); } catch { /* ignore */ }
       }
     },
+    // [Multi-channel] Allow redirecting Claude output to the invoking channel
+    setResponseChannel: (ch: any) => { responseChannel = ch; },
   };
 
   // Create Discord bot
@@ -549,13 +551,19 @@ async function sendMessageContentTracked(channel: any, content: MessageContent):
 }
 
 /**
+ * Shared state for multi-channel support — which channel Claude output should go to.
+ */
+// deno-lint-ignore no-explicit-any
+let responseChannel: any = null;
+
+/**
  * Create Discord sender adapter from bot instance.
  */
 // deno-lint-ignore no-explicit-any
 function createDiscordSenderAdapter(bot: any): DiscordSender {
   return {
     async sendMessage(content) {
-      const channel = bot.getChannel();
+      const channel = responseChannel || bot.getChannel();
       if (channel) {
         await sendMessageContent(channel, content);
       }
