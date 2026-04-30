@@ -17,8 +17,14 @@ do_start() {
 
   # Load .env file into environment (Deno doesn't auto-load .env)
   if [ -f .env ]; then
-    export $(grep -v '^#' .env | grep -v '^$' | xargs)
+    while IFS= read -r line || [ -n "$line" ]; do
+      case "$line" in
+        '#'*|'') continue ;;
+      esac
+      export "$line"
+    done < .env
     echo "Loaded .env file"
+    echo "ALLOW_ANY_CHANNEL=$ALLOW_ANY_CHANNEL"
   fi
 
   nohup npx deno run --allow-all index.ts > "$LOG_FILE" 2>&1 &
