@@ -129,4 +129,6 @@ export interface BotDependencies {
   monitorConfig?: MonitorConfig;
   /** Callback for plain text messages in session threads (auto-resume) */
   onThreadMessage?: (channelId: string, content: string) => Promise<void>;
+  /** Set the channel where Claude output should be sent (multi-channel support) */
+  setResponseChannel?: (channel: any) => void;
 }

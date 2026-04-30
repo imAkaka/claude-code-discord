@@ -131,7 +131,8 @@ export async function createClaudeCodeBot(config: BotConfig) {
   // The callbacks are closures over `bot` (late-bound) and `sessionThreadManager`.
   const sessionThreadCallbacks: SessionThreadCallbacks = {
     async createThreadSender(prompt: string, sessionId?: string, threadName?: string) {
-      const channel = bot?.getChannel() as TextChannel | null;
+      // [Multi-channel] Create thread in the invoking channel, not the bot's dedicated channel
+      const channel = (commandChannel || bot?.getChannel()) as TextChannel | null;
       if (!channel) throw new Error('Bot channel not ready');
 
       // If a session ID was provided, check for an existing thread to reuse
@@ -374,6 +375,11 @@ export async function createClaudeCodeBot(config: BotConfig) {
         try { await thinkingMsg.delete(); } catch { /* ignore */ }
       }
     },
+    // [Multi-channel] Allow redirecting Claude output to the invoking channel
+    setResponseChannel: (ch: any) => {
+      responseChannel = ch;
+      commandChannel = ch;
+    },
   };
 
   // Create Discord bot
@@ -484,7 +490,7 @@ export async function createClaudeCodeBot(config: BotConfig) {
  */
 // deno-lint-ignore no-explicit-any
 async function sendMessageContent(channel: any, content: MessageContent): Promise<void> {
-  const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import("npm:discord.js@14.14.1");
+  const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = await import("npm:discord.js@14.14.1");
 
   // deno-lint-ignore no-explicit-any
   const payload: any = {};
@@ -527,17 +533,38 @@ async function sendMessageContent(channel: any, content: MessageContent): Promis
     });
   }
 
+  // Handle file attachments
+  if (content.files && content.files.length > 0) {
+    payload.files = content.files.map(f => new AttachmentBuilder(f.path, { name: f.name || 'attachment', description: f.description }));
+  }
+
   await channel.send(payload);
 }
 
 /** Like sendMessageContent but returns the Message object for later editing/deleting. */
 // deno-lint-ignore no-explicit-any
 async function sendMessageContentTracked(channel: any, content: MessageContent): Promise<any> {
+  const { AttachmentBuilder } = await import("npm:discord.js@14.14.1");
   // deno-lint-ignore no-explicit-any
   const payload: any = {};
   if (content.content) payload.content = content.content;
+  if (content.files && content.files.length > 0) {
+    payload.files = content.files.map(f => new AttachmentBuilder(f.path, { name: f.name || 'attachment', description: f.description }));
+  }
   return await channel.send(payload);
 }
+
+/**
+ * Shared state for multi-channel support — which channel Claude output should go to.
+ */
+// deno-lint-ignore no-explicit-any
+let responseChannel: any = null;
+
+/**
+ * The channel where the current slash command was invoked (for thread creation).
+ */
+// deno-lint-ignore no-explicit-any
+let commandChannel: any = null;
 
 /**
  * Create Discord sender adapter from bot instance.
@@ -546,7 +573,7 @@ async function sendMessageContentTracked(channel: any, content: MessageContent):
 function createDiscordSenderAdapter(bot: any): DiscordSender {
   return {
     async sendMessage(content) {
-      const channel = bot.getChannel();
+      const channel = responseChannel || bot.getChannel();
       if (channel) {
         await sendMessageContent(channel, content);
       }

@@ -116,6 +116,7 @@ MONITOR_BOT_IDS=987654321,111111111      # Bot/webhook user IDs to trigger auto-
 | `ADMIN_USER_IDS` | No | Comma-separated user IDs for RBAC — grants access regardless of roles |
 | `MONITOR_CHANNEL_ID` | No | Discord channel ID to watch for bot/webhook messages |
 | `MONITOR_BOT_IDS` | No | Comma-separated bot/webhook user IDs that trigger auto-investigation |
+| `ALLOW_ANY_CHANNEL` | No | Set to `true` to allow slash commands in any channel (default: false) |
 
 > CLI flags override environment variables. Environment variables override `.env` file values.
 
