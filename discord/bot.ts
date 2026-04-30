@@ -252,11 +252,17 @@ export async function createDiscordBot(
 
   // Helper: check if an interaction belongs to our bot channel or a thread inside it
   function isOurChannel(channelId: string): boolean {
+    const envVal = Deno.env.get("ALLOW_ANY_CHANNEL");
+    console.log(`[isOurChannel] ALLOW_ANY_CHANNEL="${envVal}" channelId="${channelId}"`);
+    // [NEW] Allow commands in any channel if env var is set
+    if (envVal === "true") {
+      console.log(`[isOurChannel] ALLOW_ANY_CHANNEL matched, returning true`);
+      return true;
+    }
     if (!myChannel) return false;
     if (channelId === myChannel.id) return true;
     // Check if the interaction is inside a thread whose parent is our channel
     const channel = client.channels.cache.get(channelId);
-    // deno-lint-ignore no-explicit-any
     return !!(channel && (channel as any).parentId === myChannel.id);
   }
 
