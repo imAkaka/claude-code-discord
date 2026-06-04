@@ -192,3 +192,45 @@ Deno.test("saveToDisk + loadFromDisk: persists autoThread field", async () => {
     await Deno.remove(tmpDir, { recursive: true });
   }
 });
+
+// --- lastSeenMessageId ---
+
+Deno.test("setLastSeenMessageId persists round-trip", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "ws-mgr-test-" });
+  try {
+    const mgr1 = new WorkspaceManager(dir);
+    await mgr1.loadFromDisk();
+    mgr1.add({ name: "p", path: "/p", channelId: "ch1" });
+    mgr1.setLastSeenMessageId("ch1", "msg-42");
+    await mgr1.saveToDisk();
+
+    const mgr2 = new WorkspaceManager(dir);
+    await mgr2.loadFromDisk();
+    assertEquals(mgr2.getLastSeenMessageId("ch1"), "msg-42");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("getLastSeenMessageId returns undefined for unknown channel", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "ws-mgr-test-" });
+  try {
+    const mgr = new WorkspaceManager(dir);
+    await mgr.loadFromDisk();
+    assertEquals(mgr.getLastSeenMessageId("nope"), undefined);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("setLastSeenMessageId on unknown channel is a no-op", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "ws-mgr-test-" });
+  try {
+    const mgr = new WorkspaceManager(dir);
+    await mgr.loadFromDisk();
+    mgr.setLastSeenMessageId("nope", "msg-1"); // should not throw
+    assertEquals(mgr.getLastSeenMessageId("nope"), undefined);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});

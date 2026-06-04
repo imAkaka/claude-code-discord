@@ -1,5 +1,5 @@
 /** @module discord/types — Shared type definitions for the Discord layer. */
-import type { TextChannel } from "npm:discord.js@14.14.1";
+import type { ButtonInteraction, TextChannel } from "npm:discord.js@14.14.1";
 import type { BotSettings } from "../types/shared.ts";
 
 export interface EmbedData {
@@ -119,6 +119,8 @@ export interface SessionThread {
   messageCount: number;
   /** Per-session hot query override (undefined = use global default) */
   hotQuery?: boolean;
+  /** ID of the last user message the bot processed in this thread (offline catch-up bookmark). */
+  lastSeenMessageId?: string;
 }
 
 export interface BotDependencies {
@@ -141,7 +143,13 @@ export interface BotDependencies {
   /** Returns true when the given channel has the auto-thread workspace option enabled */
   isAutoThreadChannel?: (channelId: string) => boolean;
   /** Callback for plain text messages in auto-thread-enabled workspace channels */
-  onWorkspaceMessage?: (channelId: string, content: string) => Promise<void>;
+  onWorkspaceMessage?: (
+    channelId: string,
+    content: string,
+    meta?: { messageId?: string; userId?: string },
+  ) => Promise<void>;
   /** Resolve a HotQuerySession by sessionId — used by the queue-clear button handler. */
   resolveHotSession?: (sessionId: string) => unknown;
+  /** Routes offline-catchup:* button interactions. */
+  catchupButtonHandler?: (interaction: ButtonInteraction) => Promise<void>;
 }

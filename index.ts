@@ -24,11 +24,16 @@ import {
   createSessionThreadCallbacks,
   SessionThreadManager,
 } from "./discord/index.ts";
+import {
+  createCatchupButtonHandler,
+  OfflineCatchupManager,
+} from "./discord/offline-catchup.ts";
 import type { TextChannel, ThreadChannel } from "npm:discord.js@14.14.1";
 
 import { getGitInfo } from "./git/index.ts";
 import { createClaudeSender, expandableContent } from "./claude/discord-sender.ts";
 import { sendToClaudeCode } from "./claude/client.ts";
+import { formatClaudeError } from "./claude/error-formatter.ts";
 import {
   clearActiveSender,
   getActiveSender,
@@ -323,8 +328,9 @@ export async function createClaudeCodeBot(config: BotConfig) {
       }
     } catch (error) {
       console.error(`[ColdTurn] Failed to resume session ${sessionId}:`, error);
-      const errMsg = error instanceof Error ? error.message : String(error);
-      await thread.send(`⚠️ Failed to resume session: ${errMsg}`).catch(() => {});
+      const friendly = formatClaudeError(error);
+      const hint = friendly.retryable ? "" : "\n\n_该会话仍然可用，可以再发一条消息继续。_";
+      await thread.send(`⚠️ ${friendly.summary}${hint}`).catch(() => {});
     } finally {
       claudeSessionOps.setController(null, threadChannelId);
       try {
@@ -593,7 +599,7 @@ export async function createClaudeCodeBot(config: BotConfig) {
         return;
       }
 
-      sessionThreadManager.recordActivity(sessionId);
+      sessionThreadManager.recordActivity(sessionId, meta?.messageId);
 
       // Cold path: when hot query is disabled, fall back to the per-message
       // cold runner. No queue for cold path — by design (see spec).
@@ -732,12 +738,21 @@ export async function createClaudeCodeBot(config: BotConfig) {
       }
     },
     isAutoThreadChannel: (channelId: string) => workspaceManager.isAutoThreadChannel(channelId),
-    onWorkspaceMessage: async (channelId: string, content: string) => {
+    onWorkspaceMessage: async (
+      channelId: string,
+      content: string,
+      meta?: { messageId?: string; userId?: string },
+    ) => {
       const channel = commandChannels.get(channelId) ??
         bot?.getGuild?.()?.channels.cache.get(channelId);
       if (!channel) {
         console.warn(`[WorkspaceMessage] Channel ${channelId} not found, ignoring`);
         return;
+      }
+
+      if (meta?.messageId) {
+        workspaceManager.setLastSeenMessageId(channelId, meta.messageId);
+        await workspaceManager.saveToDisk();
       }
 
       // Register the channel for routing
@@ -815,12 +830,19 @@ export async function createClaudeCodeBot(config: BotConfig) {
         }
       } catch (error) {
         console.error("[WorkspaceMessage] Claude run failed:", error);
-        if (threadSessionKey.startsWith("pending_")) {
-          sessionThreadManager.updateSessionId(threadSessionKey, `failed_${threadSessionKey}`);
+        // Placeholder never got upgraded to a real session ID — the thread
+        // can't be resumed, so drop the record instead of leaving a
+        // `failed_*` zombie that silently swallows future user messages.
+        const placeholderUnresolved = threadSessionKey.startsWith("pending_");
+        if (placeholderUnresolved) {
+          sessionThreadManager.deleteSession(threadSessionKey);
         }
-        const errMsg = error instanceof Error ? error.message : String(error);
+        const friendly = formatClaudeError(error);
+        const hint = placeholderUnresolved
+          ? "\n\n此会话未能建立，请到原频道**重新发起一次**。"
+          : (friendly.retryable ? "" : "");
         try {
-          await thread?.send(`⚠️ Claude failed: ${errMsg}`);
+          await thread?.send(`⚠️ ${friendly.summary}${hint}`);
         } catch { /* ignore */ }
       } finally {
         claudeSessionOps.setController(null, threadChannelId);
@@ -854,6 +876,24 @@ export async function createClaudeCodeBot(config: BotConfig) {
       await workspaceManager.saveToDisk();
     }
   }
+
+  // Wire offline message catch-up: scan managed channels for messages sent
+  // while bot was offline, post inbox prompts, route Process / Ignore buttons.
+  const offlineCatchup = new OfflineCatchupManager({
+    client: bot.client,
+    sessionThreads: sessionThreadManager,
+    workspaceManager,
+  });
+  dependencies.catchupButtonHandler = createCatchupButtonHandler({
+    client: bot.client,
+    sessionThreads: sessionThreadManager,
+    workspaceManager,
+    onThreadMessage: dependencies.onThreadMessage,
+    onWorkspaceMessage: dependencies.onWorkspaceMessage,
+  });
+  offlineCatchup.runOnStartup().catch((err) =>
+    console.error("[OfflineCatchup] runOnStartup error:", err)
+  );
 
   // Start admin web UI
   const { startAdminServer } = await import("./admin/index.ts");

@@ -435,6 +435,16 @@ export async function createDiscordBot(
       return;
     }
 
+    if (interaction.customId.startsWith("offline-catchup:")) {
+      if (!dependencies.catchupButtonHandler) return;
+      try {
+        await dependencies.catchupButtonHandler(interaction);
+      } catch (err) {
+        console.error("[offline-catchup] handler error:", err);
+      }
+      return;
+    }
+
     const handler = buttonHandlers.get(interaction.customId);
 
     if (handler) {
@@ -806,7 +816,10 @@ export async function createDiscordBot(
             userId: message.author.id,
           });
         } else {
-          await onWorkspaceMessage!(message.channelId, textContent);
+          await onWorkspaceMessage!(message.channelId, textContent, {
+            messageId: message.id,
+            userId: message.author.id,
+          });
         }
       } catch (error) {
         console.error("[MessageCreate] Error handling message:", error);
