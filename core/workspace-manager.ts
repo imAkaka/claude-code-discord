@@ -10,6 +10,8 @@ export interface WorkspaceEntry {
   path: string;
   channelId: string;
   autoThread?: boolean;
+  /** Last Discord message ID seen in this channel — used as the offline catch-up bookmark. */
+  lastSeenMessageId?: string;
 }
 
 interface WorkspaceData {
@@ -81,6 +83,17 @@ export class WorkspaceManager {
     if (!entry) return undefined;
     entry.autoThread = enabled;
     return entry;
+  }
+
+  setLastSeenMessageId(channelId: string, messageId: string): void {
+    const entry = this.workspaces.find((w) => w.channelId === channelId);
+    if (entry) {
+      entry.lastSeenMessageId = messageId;
+    }
+  }
+
+  getLastSeenMessageId(channelId: string): string | undefined {
+    return this.workspaces.find((w) => w.channelId === channelId)?.lastSeenMessageId;
   }
 
   getManagedChannelIds(): Set<string> {
