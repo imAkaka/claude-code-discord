@@ -31,15 +31,20 @@ export function createSessionThreadCallbacks(
     ) {
       let channel: TextChannel | null = (channelId && commandChannels.get(channelId)) ||
         null;
-      // Fallback: fetch from Discord client cache (e.g. scheduled tasks where
+      // Fallback: fetch from Discord client (e.g. scheduled tasks where
       // no prior slash command has populated commandChannels for this channel)
       if (!channel && channelId) {
         const bot = getBot();
-        const fetched = bot?.client?.channels?.cache?.get(channelId) ?? null;
-        if (fetched) {
-          channel = fetched as TextChannel;
-          commandChannels.set(channelId, channel);
+        const cached = bot?.client?.channels?.cache?.get(channelId) ?? null;
+        if (cached) {
+          channel = cached as TextChannel;
+        } else if (bot?.client?.channels) {
+          try {
+            const fetched = await bot.client.channels.fetch(channelId);
+            if (fetched) channel = fetched as TextChannel;
+          } catch { /* channel not accessible */ }
         }
+        if (channel) commandChannels.set(channelId, channel);
       }
       if (!channel) {
         channel = getBot()?.getChannel() as TextChannel | null;
